@@ -8,10 +8,12 @@ html, body {
   margin: 0;
   padding: 0;
 }
+
 body {
   font-family: 'Open Sans', Helvetica, Arial, sans-serif;
-  background: white;
+  background: #e0e6ea;
   color: black;
+  margin:0 20px;
 }
 
 .centeraligned {
@@ -66,4 +68,18 @@ body {
   float: right;
   min-width: 150px;
   max-width: 400px;
+}
+
+#pluginchartplaceholders{
+  background: WhiteSmoke;
+  padding: 10px;
+}
+
+#daytodaycharts table{
+  border-bottom: 1px solid #6c6;
+}
+
+#daytodaycharts table table {
+  width: 280px;
+  border-bottom: 0px;
 }
