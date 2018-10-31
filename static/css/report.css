@@ -81,5 +81,9 @@ body {
 
 #daytodaycharts table table {
   width: 280px;
-  border-bottom: 0px;
+  border-bottom: 0;
+}
+
+h2{
+    margin-top: 0;
 }
