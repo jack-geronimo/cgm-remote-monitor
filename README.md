@@ -110,9 +110,9 @@ Community maintained fork of the
 
 Supported configurations:
 
-If you plan to use Nightscout, we recommend using [Heroku](http://openaps.readthedocs.io/en/latest/docs/While%20You%20Wait%20For%20Gear/nightscout-setup.html#nightscout-setup-with-heroku), as Nightscout can reach the usage limits of the free Azure plan and cause it to shut down for hours or days. If you end up needing a paid tier, the $7/mo Heroku plan is also much cheaper than the first paid tier of Azure. Currently, the only added benefit to choosing the $7/mo Heroku plan vs the free Heroku plan is a section showing site use metrics for performance (such as response time). This has limited benefit to the average Nightscout user. In short, Heroku is the free and best option for Nightscout hosting.
+If you plan to use Nightscout, we recommend using [Heroku](http://www.nightscout.info/wiki/welcome/set-up-nightscout-using-heroku), as Nightscout can reach the usage limits of the free Azure plan and cause it to shut down for hours or days. If you end up needing a paid tier, the $7/mo Heroku plan is also much cheaper than the first paid tier of Azure. Currently, the only added benefit to choosing the $7/mo Heroku plan vs the free Heroku plan is a section showing site use metrics for performance (such as response time). This has limited benefit to the average Nightscout user. In short, Heroku is the free and best option for Nightscout hosting.
 
-- [Nightscout Setup with Heroku](http://openaps.readthedocs.io/en/latest/docs/While%20You%20Wait%20For%20Gear/nightscout-setup.html#nightscout-setup-with-heroku) (recommended)
+- [Nightscout Setup with Heroku](http://www.nightscout.info/wiki/welcome/set-up-nightscout-using-heroku) (recommended)
 - [Nightscout Setup with Microsoft Azure](http://www.nightscout.info/wiki/faqs-2/azure-2) (not recommended, please 
 [switch from Azure to Heroku](http://openaps.readthedocs.io/en/latest/docs/While%20You%20Wait%20For%20Gear/nightscout-setup.html#switching-from-azure-to-heroku) )
 - Linux based install (Debian, Ubuntu, Raspbian) install with own Node.JS and MongoDB install (see software requirements below)
@@ -131,7 +131,7 @@ Minimum browser requirements for viewing the site:
 
 Windows installation software requirements:
 
-- [Node.js](http://nodejs.org/) Latest Node 8 LTS (Node 8.15.0 or later) or Node 10 LTS (Node 10.15.1 or later; Node 10.14.1 works for Azure). Use [Install instructions for Node](https://nodejs.org/en/download/package-manager/) or use `setup.sh`)
+- [Node.js](http://nodejs.org/) Latest Node 8 LTS (Node 8.15.1 or later) or Node 10 LTS (Node 10.15.2 or later; Node 10.14.1 works for Azure). Use [Install instructions for Node](https://nodejs.org/en/download/package-manager/) or use `setup.sh`)
 - [MongoDB](https://www.mongodb.com/download-center?jmp=nav#community) 3.x or later. MongoDB 2.4 is only supported for Raspberry Pi.
 
 As a non-root user clone this repo then install dependencies into the root of the project:
