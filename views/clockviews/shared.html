@@ -71,6 +71,10 @@
     document.head.appendChild(script); //or something of the likes
 
     var buttonVisible = true;
+    
+    if (token != '') {
+      $('#closeButton').attr('href', '/' + '?token=' + token);
+    }
 
     function hideClose () {
       document.getElementById('closeButton').classList.add('hidden');
