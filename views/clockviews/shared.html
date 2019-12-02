@@ -73,7 +73,7 @@
     var buttonVisible = true;
     
     if (token != '') {
-      $('#closeButton').attr('href', '/' + '?token=' + token);
+      document.getElementById('closeButton').setAttribute("href", '/?token=' + token);
     }
 
     function hideClose () {
