@@ -10,6 +10,7 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from 'recharts';
+import { shallow } from 'zustand/shallow';
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatBgValue, getBgColor } from '../../lib/utils';
@@ -19,14 +20,17 @@ import { cn } from '../../lib/utils';
 export function Chart() {
   const entries = useBgStore((state) => state.entries);
   const units = useSettingsStore((state) => state.units);
-  const settings = useSettingsStore((state) => ({
-    alarmUrgentHigh: state.alarmUrgentHigh,
-    alarmHigh: state.alarmHigh,
-    targetTop: state.targetTop,
-    targetBottom: state.targetBottom,
-    alarmLow: state.alarmLow,
-    alarmUrgentLow: state.alarmUrgentLow,
-  }));
+  const settings = useSettingsStore(
+    (state) => ({
+      alarmUrgentHigh: state.alarmUrgentHigh,
+      alarmHigh: state.alarmHigh,
+      targetTop: state.targetTop,
+      targetBottom: state.targetBottom,
+      alarmLow: state.alarmLow,
+      alarmUrgentLow: state.alarmUrgentLow,
+    }),
+    shallow
+  );
 
   // Get last 12 hours of data
   const chartData = useMemo(() => {
