@@ -6,6 +6,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { fetchOlderEntries, fetchNewerEntries } from '../../lib/api';
 import { CurrentValueWindow } from './CurrentValueWindow';
 import { ChartTooltip } from './ChartTooltip';
+import { VerticalCursorLine } from './VerticalCursorLine';
 
 // Time range presets in milliseconds
 const TIME_RANGES = {
@@ -214,16 +215,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
-        // Only show vertical line, no crosshair
-        show: true,
-        x: true,  // Show vertical line
-        y: false, // Hide horizontal line
+        // Disable uPlot's built-in cursor - we render our own
+        show: false,
         drag: {
-          x: false,  // Disable drag to avoid conflict with mouse wheel
+          x: false,
           y: false,
-        },
-        points: {
-          show: false, // Don't show extra cursor point - data points are already visible
         },
       },
     };
@@ -534,6 +530,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         <div ref={chartRef} className="w-full" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
+          {hoveredValue && <VerticalCursorLine x={hoveredValue.x} height={500} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>
