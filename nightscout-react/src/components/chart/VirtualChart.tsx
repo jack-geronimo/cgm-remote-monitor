@@ -29,6 +29,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     value: number;
     x: number;
     y: number;
+    bbox: {
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    };
   } | null>(null);
 
   // Store data
@@ -430,11 +436,20 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         const x = chart.valToPos(exactTimestamp, 'x');
         const y = chart.valToPos(value, 'y');
 
+        // Get the plot area bounding box (excludes axes/labels)
+        const bbox = chart.bbox;
+
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
           x,
           y,
+          bbox: {
+            left: bbox.left,
+            top: bbox.top,
+            width: bbox.width,
+            height: bbox.height,
+          },
         });
       }
     };
@@ -530,7 +545,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         <div ref={chartRef} className="w-full" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
-          {hoveredValue && <VerticalCursorLine x={hoveredValue.x} height={500} />}
+          {hoveredValue && <VerticalCursorLine x={hoveredValue.x} bbox={hoveredValue.bbox} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>
