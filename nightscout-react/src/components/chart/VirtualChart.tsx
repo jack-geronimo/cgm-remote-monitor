@@ -423,6 +423,9 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       let closestIdx = 0;
       let minTimeDist = Infinity;
 
+      // DEBUG: Log every 20th mouse move
+      const shouldDebug = Math.random() < 0.05;
+
       for (let i = 0; i < data[0].length; i++) {
         const timeDist = Math.abs(data[0][i] - mouseTimestamp);
         if (timeDist < minTimeDist) {
@@ -431,9 +434,31 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         }
       }
 
+      if (shouldDebug) {
+        console.log('=== CURSOR DEBUG ===');
+        console.log('Mouse X (px):', mouseX.toFixed(1));
+        console.log('Mouse timestamp:', new Date(mouseTimestamp * 1000).toLocaleTimeString());
+        console.log('Closest index:', closestIdx);
+        console.log('Closest data timestamp:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
+        console.log('Closest data value:', data[1][closestIdx]);
+
+        // Show neighbors
+        console.log('NEIGHBORS:');
+        for (let i = Math.max(0, closestIdx - 3); i <= Math.min(data[0].length - 1, closestIdx + 3); i++) {
+          const marker = i === closestIdx ? ' ← SELECTED' : '';
+          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}${marker}`);
+        }
+      }
+
       // Convert time distance to pixel distance to check if we're close enough
       const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
       const pixelDist = Math.abs(closestPointX - mouseX);
+
+      if (shouldDebug) {
+        console.log('Closest point X (px):', closestPointX.toFixed(1));
+        console.log('Pixel distance:', pixelDist.toFixed(1));
+        console.log('====================');
+      }
 
       // Only show if:
       // 1. We're close enough to a data point (within 50 pixels)
