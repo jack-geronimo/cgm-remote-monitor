@@ -190,23 +190,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         {},
         {
           label: 'BG',
-          stroke: (u, seriesIdx) => {
-            // Color the line based on the current value
-            const data = u.data[seriesIdx];
-            if (!data || data.length === 0) return '#3B82F6';
-
-            // Use the last (most recent) value for line color
-            const lastValue = data[data.length - 1];
-            if (typeof lastValue !== 'number') return '#3B82F6';
-
-            if (lastValue >= alarmUrgentHigh || lastValue <= alarmUrgentLow) {
-              return '#DC2626'; // red-600
-            } else if (lastValue >= alarmHigh || lastValue <= alarmLow) {
-              return '#F59E0B'; // amber-500
-            } else {
-              return '#22C55E'; // green-500
-            }
-          },
+          stroke: '#22C55E', // Default green color
           width: 2,
           points: { show: false },
         },
