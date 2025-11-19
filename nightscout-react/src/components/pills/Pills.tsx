@@ -36,9 +36,6 @@ export function Pills() {
   const deviceStatus = data?.devicestatus?.[0];
 
   if (deviceStatus) {
-    // Debug: log the device status structure
-    console.log('Device status:', deviceStatus);
-
     // Try different IOB sources
     if (deviceStatus.openaps?.iob?.iob !== undefined) {
       iob = Number(deviceStatus.openaps.iob.iob);
@@ -49,8 +46,6 @@ export function Pills() {
     } else if (deviceStatus.pump?.iob !== undefined) {
       iob = Number(deviceStatus.pump.iob);
     }
-
-    console.log('Extracted IOB:', iob);
   }
 
   const iobValue = (iob !== null && !isNaN(iob)) ? `${iob.toFixed(2)}U` : '---';
@@ -72,8 +67,6 @@ export function Pills() {
     } else if (deviceStatus.pump?.cob !== undefined) {
       cob = Number(deviceStatus.pump.cob);
     }
-
-    console.log('Extracted COB:', cob);
   }
 
   const cobValue = (cob !== null && !isNaN(cob)) ? `${Math.round(cob)}g` : '---';
@@ -90,8 +83,6 @@ export function Pills() {
       pumpBattery = (batteryData as any).percent ?? (batteryData as any).value ?? null;
     }
   }
-
-  console.log('Extracted pump battery:', pumpBattery);
 
   const pumpBatteryValue = (pumpBattery !== null && !isNaN(pumpBattery)) ? `${Math.round(pumpBattery)}%` : '---';
   const pumpBatteryStatus = (pumpBattery !== null && !isNaN(pumpBattery))
@@ -112,8 +103,6 @@ export function Pills() {
       reservoir = (reservoirData as any).value ?? (reservoirData as any).units ?? null;
     }
   }
-
-  console.log('Extracted reservoir:', reservoir);
 
   const reservoirValue = (reservoir !== null && !isNaN(reservoir)) ? `${reservoir.toFixed(1)}U` : '---';
   const reservoirStatus = (reservoir !== null && !isNaN(reservoir))
@@ -136,8 +125,6 @@ export function Pills() {
       uploaderBattery = (uploaderData as any).percent ?? (uploaderData as any).value ?? null;
     }
   }
-
-  console.log('Extracted uploader battery:', uploaderBattery);
 
   const uploaderBatteryValue = (uploaderBattery !== null && !isNaN(uploaderBattery)) ? `${Math.round(uploaderBattery)}%` : '---';
   const uploaderBatteryStatus = (uploaderBattery !== null && !isNaN(uploaderBattery))
