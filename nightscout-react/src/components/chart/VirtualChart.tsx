@@ -403,23 +403,24 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const chart = uplotRef.current;
       if (!chart) return;
 
-      const rect = chartRef.current!.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      // Get canvas element position (not container!)
+      const canvas = chart.root.querySelector('canvas');
+      if (!canvas) return;
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - canvasRect.left;
+      const mouseY = e.clientY - canvasRect.top;
 
       const bbox = chart.bbox;
 
-      // Check if mouse is within plot area (allow up to edges)
-      if (mouseX < bbox.left - 1 || mouseX > bbox.left + bbox.width + 1 ||
-          mouseY < bbox.top - 1 || mouseY > bbox.top + bbox.height + 1) {
+      // Check if mouse is within plot area - be generous at edges
+      if (mouseX < bbox.left - 5 || mouseX > bbox.left + bbox.width + 5 ||
+          mouseY < bbox.top - 5 || mouseY > bbox.top + bbox.height + 5) {
         setHoveredValue(null);
         return;
       }
 
-      // Clamp mouse position to plot area
-      const clampedX = Math.max(bbox.left, Math.min(mouseX, bbox.left + bbox.width));
-
-      // Find nearest data point by PIXEL distance, not time distance
+      // Find nearest data point by PIXEL distance
       const data = chart.data;
       let closestIdx = 0;
       let minDist = Infinity;
@@ -427,8 +428,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       for (let i = 0; i < data[0].length; i++) {
         // Calculate pixel position of this data point
         const pointX = chart.valToPos(data[0][i], 'x');
-        // Find distance in pixels
-        const dist = Math.abs(pointX - clampedX);
+        // Find distance in pixels to mouse
+        const dist = Math.abs(pointX - mouseX);
         if (dist < minDist) {
           minDist = dist;
           closestIdx = i;
@@ -444,11 +445,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         const dataPointY = chart.valToPos(value, 'y');
 
         setHoveredValue({
-          time: exactTimestamp * 1000, // Convert back to milliseconds
+          time: exactTimestamp * 1000,
           value,
-          lineX: dataPointX, // Vertical line at data point (snaps to data)
-          x: dataPointX, // Tooltip at data point
-          y: dataPointY, // Tooltip at data point
+          lineX: dataPointX,
+          x: dataPointX,
+          y: dataPointY,
           bbox: {
             left: bbox.left,
             top: bbox.top,
