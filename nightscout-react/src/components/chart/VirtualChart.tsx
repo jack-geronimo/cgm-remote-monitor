@@ -431,6 +431,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         console.log('Mouse Y (canvas):', mouseY.toFixed(1));
         console.log('BBox:', { left: bbox.left, top: bbox.top, width: bbox.width, height: bbox.height });
         console.log('Total data points:', data[0].length);
+
+        // Show the visual range of data points
+        const firstPointX = chart.valToPos(data[0][0], 'x');
+        const lastPointX = chart.valToPos(data[0][data[0].length - 1], 'x');
+        console.log('Data point X range:', firstPointX.toFixed(1), 'to', lastPointX.toFixed(1));
+        console.log('First timestamp:', new Date(data[0][0] * 1000).toLocaleTimeString());
+        console.log('Last timestamp:', new Date(data[0][data[0].length - 1] * 1000).toLocaleTimeString());
       }
 
       for (let i = 0; i < data[0].length; i++) {
