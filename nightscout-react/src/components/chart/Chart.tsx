@@ -103,10 +103,11 @@ export function Chart() {
     // Filter to only visible data
     const visibleData = allChartData.filter(d => d.time >= visibleStartTime);
 
-    // Sample if still too many points (max 200 for performance)
+    // AGGRESSIVE sampling: max 100 points total to prevent crashes
+    // At 5-min intervals, 100 points = ~8 hours of data
     let sampledData = visibleData;
-    if (sampledData.length > 200) {
-      const step = Math.ceil(sampledData.length / 200);
+    if (sampledData.length > 100) {
+      const step = Math.ceil(sampledData.length / 100);
       sampledData = visibleData.filter((_, index) => index % step === 0);
     }
 
@@ -438,9 +439,9 @@ export function Chart() {
             dataKey="bg"
             stroke="#3B82F6"
             strokeWidth={2}
-            dot={<CustomDot />}
-            activeDot={{ r: 6 }}
-            animationDuration={300}
+            dot={false}
+            activeDot={false}
+            isAnimationActive={false}
           />
         </LineChart>
         </div>
