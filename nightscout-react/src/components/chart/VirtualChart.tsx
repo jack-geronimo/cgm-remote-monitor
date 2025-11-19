@@ -440,19 +440,24 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const exactTimestamp = data[0][closestIdx];
 
       if (value != null && isFinite(value)) {
-        // Calculate data point pixel positions
+        // Calculate data point pixel positions (canvas coordinates)
         const dataPointX = chart.valToPos(exactTimestamp, 'x');
         const dataPointY = chart.valToPos(value, 'y');
+
+        // Convert canvas coordinates to container coordinates
+        const containerRect = chartRef.current!.getBoundingClientRect();
+        const canvasOffsetX = canvasRect.left - containerRect.left;
+        const canvasOffsetY = canvasRect.top - containerRect.top;
 
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
-          lineX: dataPointX,
-          x: dataPointX,
-          y: dataPointY,
+          lineX: dataPointX + canvasOffsetX, // Container coordinates
+          x: dataPointX + canvasOffsetX, // Container coordinates
+          y: dataPointY + canvasOffsetY, // Container coordinates
           bbox: {
-            left: bbox.left,
-            top: bbox.top,
+            left: bbox.left + canvasOffsetX,
+            top: bbox.top + canvasOffsetY,
             width: bbox.width,
             height: bbox.height,
           },
