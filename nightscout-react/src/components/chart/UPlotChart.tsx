@@ -209,18 +209,42 @@ export function UPlotChart() {
     if (!container) return;
 
     const handleScroll = async () => {
-      if (isLoadingRef.current || !hasMoreData) return;
+      if (isLoadingRef.current || !hasMoreData) {
+        console.log('Scroll: skipping load', {
+          isLoading: isLoadingRef.current,
+          hasMoreData
+        });
+        return;
+      }
 
       const scrollLeft = container.scrollLeft;
-      const threshold = 200;
+      const scrollWidth = container.scrollWidth;
+      const clientWidth = container.clientWidth;
+      const threshold = 400; // Increased threshold
+
+      console.log('Scroll event:', {
+        scrollLeft,
+        scrollWidth,
+        clientWidth,
+        threshold,
+        shouldLoad: scrollLeft < threshold
+      });
 
       // Load more when scrolling near the left edge
       if (scrollLeft < threshold) {
         const oldestEntry = entries[entries.length - 1];
-        if (!oldestEntry) return;
+        if (!oldestEntry) {
+          console.log('No oldest entry found');
+          return;
+        }
 
         const oldestTimestamp = oldestEntry.mills || oldestEntry.date;
-        if (!oldestTimestamp) return;
+        if (!oldestTimestamp) {
+          console.log('No oldest timestamp found');
+          return;
+        }
+
+        console.log('Loading older entries before:', new Date(oldestTimestamp).toLocaleString());
 
         isLoadingRef.current = true;
         setIsLoading(true);
@@ -229,11 +253,19 @@ export function UPlotChart() {
           // Store scroll position before loading
           previousScrollLeft.current = container.scrollWidth - scrollLeft;
 
-          const olderEntries = await fetchOlderEntries(oldestTimestamp, 288);
+          const olderEntries = await fetchOlderEntries(oldestTimestamp, 500);
+
+          console.log('Loaded older entries:', olderEntries.length);
 
           if (olderEntries.length === 0) {
+            console.log('No more data available from API');
             setHasMoreData(false);
           } else {
+            console.log('Adding entries, oldest:',
+              olderEntries.length > 0
+                ? new Date(olderEntries[olderEntries.length - 1].mills || olderEntries[olderEntries.length - 1].date).toLocaleString()
+                : 'none'
+            );
             prependOlderEntries(olderEntries);
           }
         } catch (error) {
