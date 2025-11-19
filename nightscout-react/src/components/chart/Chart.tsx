@@ -60,30 +60,25 @@ export function Chart() {
     return data;
   }, [entries]);
 
-  // Calculate chart dimensions
-  // selectedHours controls the VISIBLE viewport, not the total chart width
-  const { chartWidth, containerWidth } = useMemo(() => {
-    if (chartData.length === 0) return { chartWidth: 1200, containerWidth: 1200 };
-
-    // Fixed pixels per hour for consistent rendering (use highest zoom for quality)
-    const pixelsPerHour = 200;
+  // Calculate chart width based on selected time range
+  // Like old Nightscout: selectedHours controls the "density" of data display
+  const chartWidth = useMemo(() => {
+    if (chartData.length === 0) return 1200;
 
     // Calculate total time span of ALL data
     const oldestTime = chartData[0]?.time || Date.now();
     const newestTime = chartData[chartData.length - 1]?.time || Date.now();
     const totalHours = (newestTime - oldestTime) / (60 * 60 * 1000);
 
-    // Chart width = ALL data rendered
-    const totalChartWidth = Math.max(totalHours * pixelsPerHour, 1200);
+    // Pixels per hour based on selectedHours - this determines "zoom level"
+    // Lower selectedHours = more zoomed in = more pixels per hour
+    // Higher selectedHours = more zoomed out = fewer pixels per hour
+    const pixelsPerHour = selectedHours <= 3 ? 300 : selectedHours <= 6 ? 200 : selectedHours <= 12 ? 120 : 70;
 
-    // Container width = what's VISIBLE (based on selectedHours)
-    // This creates the "viewport" effect
-    const visibleWidth = selectedHours * pixelsPerHour;
+    // Total chart width for ALL data
+    const totalWidth = totalHours * pixelsPerHour;
 
-    return {
-      chartWidth: totalChartWidth,
-      containerWidth: Math.min(visibleWidth, totalChartWidth),
-    };
+    return Math.max(totalWidth, 1200);
   }, [chartData, selectedHours]);
 
   // Calculate dynamic tick count based on visible hours
@@ -250,12 +245,12 @@ export function Chart() {
         </div>
       </div>
 
-      {/* Scrollable chart container - width based on selected time range */}
+      {/* Scrollable chart container */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-hidden mx-auto"
-        style={{ width: `${containerWidth}px`, maxWidth: '100%' }}
+        className="overflow-x-auto overflow-y-hidden"
+        style={{ width: '100%' }}
       >
         <LineChart
           data={chartData}
