@@ -46,18 +46,39 @@ export function Chart() {
 
   // Prepare all available data for charting
   const chartData = useMemo(() => {
-    const data = entries
-      .map((entry) => {
-        // Use mills if available, otherwise fall back to date
-        const timestamp = entry.mills || entry.date;
-        return {
-          time: timestamp,
-          bg: entry.sgv,
-          timeFormatted: dayjs(timestamp).format('HH:mm'),
-        };
-      })
-      .reverse(); // Recharts expects chronological order
-    return data;
+    try {
+      let data = entries
+        .map((entry) => {
+          // Use mills if available, otherwise fall back to date
+          const timestamp = entry.mills || entry.date;
+
+          // Skip invalid entries
+          if (!timestamp || !isFinite(entry.sgv)) {
+            return null;
+          }
+
+          return {
+            time: timestamp,
+            bg: entry.sgv,
+            timeFormatted: dayjs(timestamp).format('HH:mm'),
+          };
+        })
+        .filter(Boolean) // Remove null entries
+        .reverse(); // Recharts expects chronological order
+
+      // Performance optimization: Limit rendered points to 1000 max
+      // This prevents browser crashes with huge datasets
+      if (data.length > 1000) {
+        // Sample every nth point to get ~1000 points
+        const step = Math.ceil(data.length / 1000);
+        data = data.filter((_, index) => index % step === 0);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error preparing chart data:', error);
+      return [];
+    }
   }, [entries]);
 
   // Calculate chart width based on selected time range
@@ -198,12 +219,31 @@ export function Chart() {
   const yDomain = useMemo(() => {
     if (chartData.length === 0) return [40, 400];
 
-    const values = chartData.map((d) => d.bg);
-    const min = Math.min(...values, alarmUrgentLow);
-    const max = Math.max(...values, alarmUrgentHigh);
-    const padding = (max - min) * 0.1;
+    try {
+      const values = chartData.map((d) => d.bg).filter(v => isFinite(v));
 
-    return [Math.max(40, min - padding), Math.min(400, max + padding)];
+      if (values.length === 0) return [40, 400];
+
+      // Use reduce instead of spread for large arrays to avoid stack overflow
+      const min = Math.min(
+        values.reduce((a, b) => Math.min(a, b), Infinity),
+        alarmUrgentLow || 40
+      );
+      const max = Math.max(
+        values.reduce((a, b) => Math.max(a, b), -Infinity),
+        alarmUrgentHigh || 400
+      );
+
+      if (!isFinite(min) || !isFinite(max) || min >= max) {
+        return [40, 400];
+      }
+
+      const padding = (max - min) * 0.1;
+      return [Math.max(40, min - padding), Math.min(400, max + padding)];
+    } catch (error) {
+      console.error('Error calculating yDomain:', error);
+      return [40, 400];
+    }
   }, [chartData, alarmUrgentLow, alarmUrgentHigh]);
 
   if (chartData.length === 0) {
@@ -252,32 +292,49 @@ export function Chart() {
           <svg width="60" height="400">
             <g transform="translate(0, 10)">
               {/* Y-axis labels */}
-              {Array.from({ length: 9 }, (_, i) => {
-                const value = yDomain[0] + (yDomain[1] - yDomain[0]) * (8 - i) / 8;
-                const y = (380 * i) / 8;
-                return (
-                  <g key={i}>
-                    <line
-                      x1="50"
-                      y1={y}
-                      x2="60"
-                      y2={y}
-                      stroke="rgba(255,255,255,0.5)"
-                      strokeWidth="1"
-                    />
-                    <text
-                      x="45"
-                      y={y}
-                      textAnchor="end"
-                      dominantBaseline="middle"
-                      fill="rgba(255,255,255,0.5)"
-                      fontSize="12"
-                    >
-                      {formatBgValue(Math.round(value), units)}
-                    </text>
-                  </g>
-                );
-              })}
+              {(() => {
+                try {
+                  // Safety check for yDomain
+                  if (!yDomain || yDomain.length !== 2 ||
+                      !isFinite(yDomain[0]) || !isFinite(yDomain[1]) ||
+                      yDomain[0] >= yDomain[1]) {
+                    return null;
+                  }
+
+                  return Array.from({ length: 9 }, (_, i) => {
+                    const value = yDomain[0] + (yDomain[1] - yDomain[0]) * (8 - i) / 8;
+                    const y = (380 * i) / 8;
+
+                    if (!isFinite(value)) return null;
+
+                    return (
+                      <g key={i}>
+                        <line
+                          x1="50"
+                          y1={y}
+                          x2="60"
+                          y2={y}
+                          stroke="rgba(255,255,255,0.5)"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x="45"
+                          y={y}
+                          textAnchor="end"
+                          dominantBaseline="middle"
+                          fill="rgba(255,255,255,0.5)"
+                          fontSize="12"
+                        >
+                          {formatBgValue(Math.round(value), units)}
+                        </text>
+                      </g>
+                    );
+                  });
+                } catch (error) {
+                  console.error('Error rendering Y-axis:', error);
+                  return null;
+                }
+              })()}
             </g>
           </svg>
         </div>
