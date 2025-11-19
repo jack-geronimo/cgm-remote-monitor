@@ -406,16 +406,20 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
-      // Check if mouse is within plot area
       const bbox = chart.bbox;
-      if (mouseX < bbox.left || mouseX > bbox.left + bbox.width ||
-          mouseY < bbox.top || mouseY > bbox.top + bbox.height) {
+
+      // Check if mouse is within plot area (allow up to edges)
+      if (mouseX < bbox.left - 1 || mouseX > bbox.left + bbox.width + 1 ||
+          mouseY < bbox.top - 1 || mouseY > bbox.top + bbox.height + 1) {
         setHoveredValue(null);
         return;
       }
 
-      // Convert mouse X position to data timestamp
-      const timestamp = chart.posToVal(mouseX, 'x');
+      // Clamp mouse position to plot area
+      const clampedX = Math.max(bbox.left, Math.min(mouseX, bbox.left + bbox.width));
+
+      // Convert clamped X position to data timestamp
+      const timestamp = chart.posToVal(clampedX, 'x');
 
       // Find nearest data point
       const data = chart.data;
@@ -434,14 +438,16 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const exactTimestamp = data[0][closestIdx];
 
       if (value != null && isFinite(value)) {
-        const x = chart.valToPos(exactTimestamp, 'x');
-        const y = chart.valToPos(value, 'y');
+        // Use CLAMPED mouseX for vertical line (follows mouse)
+        // Use valToPos for tooltip (at data point)
+        const dataPointX = chart.valToPos(exactTimestamp, 'x');
+        const dataPointY = chart.valToPos(value, 'y');
 
         setHoveredValue({
           time: exactTimestamp * 1000, // Convert back to milliseconds
           value,
-          x,
-          y,
+          x: clampedX, // Vertical line follows mouse
+          y: dataPointY, // Tooltip at data point
           bbox: {
             left: bbox.left,
             top: bbox.top,
