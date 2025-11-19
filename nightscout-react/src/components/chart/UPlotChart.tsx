@@ -120,9 +120,9 @@ export function UPlotChart() {
           grid: { stroke: 'rgba(255,255,255,0.1)' },
         },
         {
+          show: false, // Hide Y-axis since we have a separate fixed axis
           stroke: 'rgba(255,255,255,0.5)',
           grid: { stroke: 'rgba(255,255,255,0.1)' },
-          values: (u, vals) => vals.map(v => `${Math.round(v)}`),
         },
       ],
       cursor: {
@@ -281,6 +281,12 @@ export function UPlotChart() {
     return () => container.removeEventListener('scroll', handleScroll);
   }, [entries, hasMoreData, prependOlderEntries]);
 
+  // Calculate Y-axis values for fixed axis
+  const yAxisValues = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400];
+  const chartHeight = 400;
+  const yMin = Math.max(40, alarmUrgentLow - 20);
+  const yMax = Math.min(400, alarmUrgentHigh + 20);
+
   return (
     <div className="card">
       {/* Header with time range selector */}
@@ -311,28 +317,78 @@ export function UPlotChart() {
         </div>
       </div>
 
-      {/* Scrollable chart container */}
-      <div
-        ref={containerRef}
-        className="w-full overflow-x-auto relative"
-        style={{ maxHeight: '450px' }}
-      >
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="absolute top-2 left-2 z-10 bg-surface-2 px-3 py-1.5 rounded-lg text-sm text-text-secondary">
-            Loading older data...
-          </div>
-        )}
+      {/* Chart with fixed Y-axis */}
+      <div className="flex gap-0">
+        {/* Fixed Y-axis */}
+        <div className="flex-shrink-0" style={{ width: '50px', height: `${chartHeight}px` }}>
+          <svg width="50" height={chartHeight} className="overflow-visible">
+            {/* Y-axis line */}
+            <line
+              x1="45"
+              y1="0"
+              x2="45"
+              y2={chartHeight}
+              stroke="rgba(255,255,255,0.5)"
+              strokeWidth="1"
+            />
 
-        {/* No more data indicator */}
-        {!hasMoreData && (
-          <div className="absolute top-2 left-2 z-10 bg-surface-2 px-3 py-1.5 rounded-lg text-sm text-text-muted">
-            No more data available
-          </div>
-        )}
+            {/* Y-axis labels and grid lines */}
+            {yAxisValues.map((value) => {
+              // Map value to Y position
+              const yPos = chartHeight - ((value - yMin) / (yMax - yMin)) * chartHeight;
 
-        {/* Chart */}
-        <div ref={chartRef} style={{ minWidth: '100%' }} />
+              if (yPos < 0 || yPos > chartHeight) return null;
+
+              return (
+                <g key={value}>
+                  {/* Label */}
+                  <text
+                    x="40"
+                    y={yPos + 4}
+                    textAnchor="end"
+                    fill="rgba(255,255,255,0.7)"
+                    fontSize="12"
+                  >
+                    {value}
+                  </text>
+                  {/* Tick mark */}
+                  <line
+                    x1="42"
+                    y1={yPos}
+                    x2="45"
+                    y2={yPos}
+                    stroke="rgba(255,255,255,0.5)"
+                    strokeWidth="1"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Scrollable chart container */}
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-x-auto relative"
+          style={{ maxHeight: '450px' }}
+        >
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute top-2 left-2 z-10 bg-surface-2 px-3 py-1.5 rounded-lg text-sm text-text-secondary">
+              Loading older data...
+            </div>
+          )}
+
+          {/* No more data indicator */}
+          {!hasMoreData && (
+            <div className="absolute top-2 left-2 z-10 bg-surface-2 px-3 py-1.5 rounded-lg text-sm text-text-muted">
+              No more data available
+            </div>
+          )}
+
+          {/* Chart */}
+          <div ref={chartRef} style={{ minWidth: '100%' }} />
+        </div>
       </div>
     </div>
   );
