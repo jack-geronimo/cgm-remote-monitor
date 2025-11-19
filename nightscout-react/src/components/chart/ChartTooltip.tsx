@@ -49,23 +49,28 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
 
   const colors = getColors(value.value);
 
-  // Position tooltip like a flag at the point
-  // Offset to the right and up a bit so it doesn't cover the point
+  // Position tooltip directly at/above the data point
   const tooltipStyle: React.CSSProperties = {
     position: 'absolute',
-    left: `${value.x + 15}px`, // Offset to the right
-    top: `${value.y}px`,
-    transform: 'translateY(-50%)',
+    left: `${value.x}px`,
+    top: `${value.y - 10}px`, // Slightly above the point
+    transform: 'translate(-50%, -100%)', // Center horizontally, position above
+    pointerEvents: 'none', // Critical: allow mouse events to pass through
   };
 
   return (
     <div
       style={tooltipStyle}
-      className={`${colors.bg} ${colors.border} border-2 rounded-lg px-3 py-1.5 shadow-lg pointer-events-none z-50 whitespace-nowrap`}
+      className={`${colors.bg} ${colors.border} border-2 rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap`}
     >
-      {/* Pointer/Arrow pointing to the data point */}
+      {/* Arrow pointing down to the data point */}
       <div
-        className={`absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent ${colors.arrow}`}
+        className={`absolute left-1/2 bottom-0 translate-y-full -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent ${colors.arrow.replace('border-r-', 'border-t-')}`}
+        style={{
+          borderLeftWidth: '6px',
+          borderRightWidth: '6px',
+          borderTopWidth: '6px',
+        }}
       />
 
       {/* Content */}
