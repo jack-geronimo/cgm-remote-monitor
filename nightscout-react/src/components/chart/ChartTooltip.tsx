@@ -4,7 +4,6 @@ interface ChartTooltipProps {
   value: {
     time: number;
     value: number;
-    index: number;
     x: number;
     y: number;
   } | null;

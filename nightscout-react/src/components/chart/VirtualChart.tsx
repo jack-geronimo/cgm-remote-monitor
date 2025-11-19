@@ -27,8 +27,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
-    index: number; // DEBUG: Array index
-    x: number; // X position for BOTH line and tooltip (snapped to data point)
+    x: number;
     y: number;
     bbox: {
       left: number;
@@ -462,19 +461,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         // BOTH line and tooltip snap to the data point position
         const dataPointXInContainer = dataPointX + canvasOffsetX;
 
-        if (debugPositions) {
-          const mouseXInContainer = mouseX + canvasOffsetX;
-          console.log('FINAL POSITIONS:');
-          console.log('  Mouse X (container):', mouseXInContainer.toFixed(1));
-          console.log('  Data Point X (container):', dataPointXInContainer.toFixed(1));
-          console.log('  Snap distance:', Math.abs(mouseXInContainer - dataPointXInContainer).toFixed(1), 'px');
-        }
-
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
-          index: closestIdx, // DEBUG: Show which index was selected
-          x: dataPointXInContainer, // BOTH line and tooltip at data point
+          x: dataPointXInContainer,
           y: dataPointY + canvasOffsetY,
           bbox: {
             left: bbox.left + canvasOffsetX,
