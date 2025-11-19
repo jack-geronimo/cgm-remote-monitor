@@ -425,6 +425,30 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       let closestIdx = 0;
       let minDist = Infinity;
 
+      // DEBUG: Log first few data points to see their positions
+      const debugPositions = Math.random() < 0.05;
+      if (debugPositions && data[0].length > 0) {
+        console.log('=== DEBUG: Finding nearest point ===');
+        console.log('Mouse X:', mouseX.toFixed(1));
+        console.log('Total data points:', data[0].length);
+
+        // Show first 10 and last 10 data points
+        for (let i = 0; i < Math.min(10, data[0].length); i++) {
+          const px = chart.valToPos(data[0][i], 'x');
+          const dist = Math.abs(px - mouseX);
+          console.log(`Point [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, time=${new Date(data[0][i] * 1000).toLocaleTimeString()}, val=${data[1][i]}`);
+        }
+
+        if (data[0].length > 20) {
+          console.log('...');
+          for (let i = data[0].length - 10; i < data[0].length; i++) {
+            const px = chart.valToPos(data[0][i], 'x');
+            const dist = Math.abs(px - mouseX);
+            console.log(`Point [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, time=${new Date(data[0][i] * 1000).toLocaleTimeString()}, val=${data[1][i]}`);
+          }
+        }
+      }
+
       for (let i = 0; i < data[0].length; i++) {
         // Calculate pixel position of this data point
         const pointX = chart.valToPos(data[0][i], 'x');
@@ -434,6 +458,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           minDist = dist;
           closestIdx = i;
         }
+      }
+
+      if (debugPositions) {
+        console.log(`CLOSEST: index=${closestIdx}, dist=${minDist.toFixed(1)}`);
+        console.log('=====================================');
       }
 
       // Only show if we're close enough to a data point (within 50 pixels)
