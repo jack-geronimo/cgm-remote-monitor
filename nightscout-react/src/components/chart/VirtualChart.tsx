@@ -27,7 +27,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
-    x: number;
+    lineX: number; // X position for vertical line (follows mouse)
+    x: number; // X position for tooltip (at data point)
     y: number;
     bbox: {
       left: number;
@@ -438,15 +439,15 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const exactTimestamp = data[0][closestIdx];
 
       if (value != null && isFinite(value)) {
-        // Use CLAMPED mouseX for vertical line (follows mouse)
-        // Use valToPos for tooltip (at data point)
+        // Calculate data point pixel positions
         const dataPointX = chart.valToPos(exactTimestamp, 'x');
         const dataPointY = chart.valToPos(value, 'y');
 
         setHoveredValue({
           time: exactTimestamp * 1000, // Convert back to milliseconds
           value,
-          x: clampedX, // Vertical line follows mouse
+          lineX: clampedX, // Vertical line follows mouse
+          x: dataPointX, // Tooltip at data point
           y: dataPointY, // Tooltip at data point
           bbox: {
             left: bbox.left,
@@ -549,7 +550,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         <div ref={chartRef} className="w-full" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
-          {hoveredValue && <VerticalCursorLine x={hoveredValue.x} bbox={hoveredValue.bbox} />}
+          {hoveredValue && <VerticalCursorLine x={hoveredValue.lineX} bbox={hoveredValue.bbox} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>
