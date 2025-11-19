@@ -515,13 +515,22 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       {/* Chart Container - relative for tooltip positioning */}
       <div className="relative w-full">
-        <div ref={chartRef} className="w-full" />
+        <div ref={chartRef} className="w-full uplot-hide-cursor" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
           {hoveredValue && <VerticalCursorLine x={hoveredValue.x} bbox={hoveredValue.bbox} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>
+
+      {/* CSS to hide uPlot's default cursor visuals */}
+      <style>{`
+        .uplot-hide-cursor .u-cursor-x,
+        .uplot-hide-cursor .u-cursor-y,
+        .uplot-hide-cursor .u-cursor-pt {
+          display: none !important;
+        }
+      `}</style>
       </div>
     </>
   );
