@@ -419,16 +419,16 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // Clamp mouse position to plot area
       const clampedX = Math.max(bbox.left, Math.min(mouseX, bbox.left + bbox.width));
 
-      // Convert clamped X position to data timestamp
-      const timestamp = chart.posToVal(clampedX, 'x');
-
-      // Find nearest data point
+      // Find nearest data point by PIXEL distance, not time distance
       const data = chart.data;
       let closestIdx = 0;
       let minDist = Infinity;
 
       for (let i = 0; i < data[0].length; i++) {
-        const dist = Math.abs(data[0][i] - timestamp);
+        // Calculate pixel position of this data point
+        const pointX = chart.valToPos(data[0][i], 'x');
+        // Find distance in pixels
+        const dist = Math.abs(pointX - clampedX);
         if (dist < minDist) {
           minDist = dist;
           closestIdx = i;
