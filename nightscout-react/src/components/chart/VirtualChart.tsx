@@ -443,6 +443,17 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         const dataPointX = chart.valToPos(exactTimestamp, 'x');
         const dataPointY = chart.valToPos(value, 'y');
 
+        // Debug logging
+        console.log('Mouse tracking:', {
+          mouseX: clampedX,
+          timestamp: new Date(exactTimestamp * 1000).toLocaleTimeString(),
+          value,
+          dataPointX,
+          dataPointY,
+          closestIdx,
+          totalPoints: data[0].length,
+        });
+
         setHoveredValue({
           time: exactTimestamp * 1000, // Convert back to milliseconds
           value,
