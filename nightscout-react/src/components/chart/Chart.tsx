@@ -46,11 +46,6 @@ export function Chart() {
 
   // Prepare all available data for charting
   const chartData = useMemo(() => {
-    console.log('Chart: entries.length =', entries.length);
-    if (entries.length > 0) {
-      console.log('Chart: first entry =', entries[0]);
-      console.log('Chart: last entry =', entries[entries.length - 1]);
-    }
     const data = entries
       .map((entry) => {
         // Use mills if available, otherwise fall back to date
@@ -62,11 +57,6 @@ export function Chart() {
         };
       })
       .reverse(); // Recharts expects chronological order
-    console.log('Chart: chartData.length =', data.length);
-    if (data.length > 0) {
-      console.log('Chart: first chartData =', data[0]);
-      console.log('Chart: last chartData =', data[data.length - 1]);
-    }
     return data;
   }, [entries]);
 
@@ -74,10 +64,7 @@ export function Chart() {
   // selectedHours controls how much horizontal space each hour takes
   // More pixels per hour for shorter time ranges = more zoomed in
   const chartWidth = useMemo(() => {
-    if (chartData.length === 0) {
-      console.log('Chart: No data, using default width 1200');
-      return 1200;
-    }
+    if (chartData.length === 0) return 1200;
 
     // Calculate pixels per hour based on zoom level (increased for better readability)
     const pixelsPerHour = selectedHours <= 3 ? 600 : selectedHours <= 6 ? 400 : selectedHours <= 12 ? 250 : 150;
@@ -91,22 +78,25 @@ export function Chart() {
     const calculatedWidth = totalHours * pixelsPerHour;
 
     // Ensure minimum width
-    const width = Math.max(calculatedWidth, 1200);
-    console.log('Chart: width =', width, 'totalHours =', totalHours, 'pixelsPerHour =', pixelsPerHour);
-    return width;
+    return Math.max(calculatedWidth, 1200);
   }, [chartData, selectedHours]);
+
+  // Calculate dynamic tick count based on zoom level
+  const xAxisTickCount = useMemo(() => {
+    // More ticks for zoomed in views, fewer for zoomed out
+    if (selectedHours <= 3) return 25; // ~every 30 min for 3h view
+    if (selectedHours <= 6) return 25; // ~every hour for 6h view
+    if (selectedHours <= 12) return 20; // ~every 1.5h for 12h view
+    return 20; // ~every 3h for 24h view
+  }, [selectedHours]);
 
   // Auto-scroll to newest data on initial load
   useEffect(() => {
-    console.log('Chart: Auto-scroll effect, hasAutoScrolled =', hasAutoScrolled.current, 'chartData.length =', chartData.length);
     if (!hasAutoScrolled.current && scrollContainerRef.current && chartData.length > 0) {
-      console.log('Chart: Scheduling auto-scroll');
       // Wait for render
       setTimeout(() => {
         if (scrollContainerRef.current) {
-          const scrollWidth = scrollContainerRef.current.scrollWidth;
-          console.log('Chart: Auto-scrolling to', scrollWidth);
-          scrollContainerRef.current.scrollLeft = scrollWidth;
+          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
           hasAutoScrolled.current = true;
         }
       }, 100);
@@ -216,10 +206,7 @@ export function Chart() {
     return [Math.max(40, min - padding), Math.min(400, max + padding)];
   }, [chartData, alarmUrgentLow, alarmUrgentHigh]);
 
-  console.log('Chart: Rendering, chartData.length =', chartData.length);
-
   if (chartData.length === 0) {
-    console.log('Chart: Showing "No data available"');
     return (
       <div className="card flex items-center justify-center h-96">
         <div className="text-center">
@@ -229,8 +216,6 @@ export function Chart() {
       </div>
     );
   }
-
-  console.log('Chart: Rendering chart with chartWidth =', chartWidth);
 
   return (
     <div className="card">
@@ -324,6 +309,7 @@ export function Chart() {
             dataKey="time"
             type="number"
             domain={['dataMin', 'dataMax']}
+            tickCount={xAxisTickCount}
             tickFormatter={(time) => dayjs(time).format('HH:mm')}
             stroke="rgba(255,255,255,0.5)"
             style={{ fontSize: '12px' }}
