@@ -4,8 +4,8 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    // Connect to the same host as the app is running on
-    const url = window.location.origin;
+    // Use VITE_API_URL from .env.development or fallback to same origin
+    const url = import.meta.env.VITE_API_URL || window.location.origin;
 
     socket = io(url, {
       transports: ['websocket', 'polling'],
