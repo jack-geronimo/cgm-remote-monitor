@@ -436,23 +436,14 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         }
       }
 
+      // Only show if we're close enough to a data point (within 50 pixels)
+      if (minDist > 50) {
+        setHoveredValue(null);
+        return;
+      }
+
       const value = data[1][closestIdx];
       const exactTimestamp = data[0][closestIdx];
-
-      // DEBUG: Log every 10th event to see what's happening
-      if (Math.random() < 0.1) {
-        const dataPointX = chart.valToPos(exactTimestamp, 'x');
-        console.log('DEBUG:', {
-          mouseX: mouseX.toFixed(1),
-          dataPointX: dataPointX.toFixed(1),
-          closestIdx,
-          timestamp: new Date(exactTimestamp * 1000).toLocaleTimeString(),
-          value,
-          totalPoints: data[0].length,
-          firstPointX: chart.valToPos(data[0][0], 'x').toFixed(1),
-          lastPointX: chart.valToPos(data[0][data[0].length - 1], 'x').toFixed(1),
-        });
-      }
 
       if (value != null && isFinite(value)) {
         // Calculate data point pixel positions (canvas coordinates)
