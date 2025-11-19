@@ -24,7 +24,7 @@ export function BgDisplay() {
   const timeAgo = timestamp ? formatTimeAgo(timestamp) : '';
 
   return (
-    <div className="card relative overflow-hidden">
+    <div className="card relative overflow-hidden py-2 px-3">
       {/* Animated background glow */}
       <div
         className={cn(
@@ -38,7 +38,7 @@ export function BgDisplay() {
 
       <div className="relative z-10">
         {/* Main BG Display */}
-        <div className="flex items-center justify-center gap-4 md:gap-6">
+        <div className="flex items-center justify-center gap-2 md:gap-3">
           {/* BG Value */}
           <motion.div
             key={currentBg}
@@ -50,7 +50,7 @@ export function BgDisplay() {
             <span
               className={cn(
                 'font-bold tracking-tight transition-colors duration-300',
-                'text-bg-display-sm md:text-bg-display',
+                'text-4xl md:text-5xl',
                 isStale && 'opacity-50 line-through',
                 bgColor
               )}
@@ -59,7 +59,7 @@ export function BgDisplay() {
             </span>
 
             {/* Units */}
-            <span className="text-sm md:text-base text-text-secondary mt-1">
+            <span className="text-xs md:text-sm text-text-secondary mt-0.5">
               {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
             </span>
           </motion.div>
@@ -72,7 +72,7 @@ export function BgDisplay() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'text-trend-arrow-sm md:text-trend-arrow',
+                'text-3xl md:text-4xl',
                 isStale && 'opacity-50',
                 bgColor
               )}
@@ -86,8 +86,8 @@ export function BgDisplay() {
 
         {/* Delta */}
         {delta !== null && (
-          <div className="mt-4 text-center">
-            <span className={cn('text-lg font-medium', bgColor)}>
+          <div className="mt-2 text-center">
+            <span className={cn('text-sm font-medium', bgColor)}>
               {delta > 0 ? '+' : ''}
               {formatBgValue(delta, units)} {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
             </span>
@@ -95,9 +95,9 @@ export function BgDisplay() {
         )}
 
         {/* Timestamp */}
-        <div className="mt-6 flex items-center justify-center gap-2 text-text-secondary">
-          <Clock className="w-4 h-4" />
-          <span className="text-sm md:text-base">
+        <div className="mt-2 flex items-center justify-center gap-1 text-text-secondary">
+          <Clock className="w-3 h-3" />
+          <span className="text-xs md:text-sm">
             {timeAgo || 'Loading...'}
           </span>
         </div>
@@ -107,10 +107,10 @@ export function BgDisplay() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 px-4 py-2 rounded-lg bg-bg-warning/10 border border-bg-warning/30 text-center"
+            className="mt-2 px-2 py-1 rounded bg-bg-warning/10 border border-bg-warning/30 text-center"
           >
-            <span className="text-sm text-bg-warning">
-              ⚠ Data is stale (over 15 minutes old)
+            <span className="text-xs text-bg-warning">
+              ⚠ Data is stale
             </span>
           </motion.div>
         )}

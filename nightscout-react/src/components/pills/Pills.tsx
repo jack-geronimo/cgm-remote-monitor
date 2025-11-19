@@ -18,11 +18,11 @@ function Pill({ label, value, icon, status = 'info' }: PillProps) {
   };
 
   return (
-    <div className={cn('pill', statusClasses[status])}>
-      {icon && <span className="flex-shrink-0">{icon}</span>}
+    <div className={cn('pill', statusClasses[status], 'py-1 px-2')}>
+      {icon && <span className="flex-shrink-0 w-3 h-3">{icon}</span>}
       <div className="flex flex-col">
-        <span className="text-xs opacity-75">{label}</span>
-        <span className="font-semibold">{value}</span>
+        <span className="text-[10px] opacity-75">{label}</span>
+        <span className="text-sm font-semibold">{value}</span>
       </div>
     </div>
   );
@@ -136,22 +136,22 @@ export function Pills() {
     : 'info';
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold text-text-primary mb-4">Status</h2>
+    <div className="card py-2 px-3">
+      <h2 className="text-sm font-semibold text-text-primary mb-2">Status</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {/* IOB - Insulin on Board */}
-        <Pill label="IOB" value={iobValue} icon={<Droplet className="w-4 h-4" />} status={iobStatus} />
+        <Pill label="IOB" value={iobValue} icon={<Droplet className="w-3 h-3" />} status={iobStatus} />
 
         {/* COB - Carbs on Board */}
-        <Pill label="COB" value={cobValue} icon={<Activity className="w-4 h-4" />} status={cobStatus} />
+        <Pill label="COB" value={cobValue} icon={<Activity className="w-3 h-3" />} status={cobStatus} />
 
         {/* Pump Battery */}
         {pumpBattery !== undefined && (
           <Pill
             label="Pump"
             value={pumpBatteryValue}
-            icon={<Battery className="w-4 h-4" />}
+            icon={<Battery className="w-3 h-3" />}
             status={pumpBatteryStatus}
           />
         )}
@@ -161,7 +161,7 @@ export function Pills() {
           <Pill
             label="Reservoir"
             value={reservoirValue}
-            icon={<Droplet className="w-4 h-4" />}
+            icon={<Droplet className="w-3 h-3" />}
             status={reservoirStatus}
           />
         )}
@@ -171,7 +171,7 @@ export function Pills() {
           <Pill
             label="Uploader"
             value={uploaderBatteryValue}
-            icon={<Zap className="w-4 h-4" />}
+            icon={<Zap className="w-3 h-3" />}
             status={uploaderBatteryStatus}
           />
         )}

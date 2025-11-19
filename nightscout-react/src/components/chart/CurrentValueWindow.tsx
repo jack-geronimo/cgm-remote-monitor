@@ -51,55 +51,38 @@ export function CurrentValueWindow({ hoveredValue }: CurrentValueWindowProps) {
   };
 
   return (
-    <div className="fixed top-20 right-6 z-50 bg-surface-2 border-2 border-surface-3 rounded-lg shadow-2xl p-4 min-w-[280px] pointer-events-none">
+    <div className="fixed top-20 right-4 z-50 bg-surface-2 border border-surface-3 rounded-lg shadow-lg p-2 min-w-[180px] pointer-events-none">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-3">
-        <span className="text-sm font-medium text-text-secondary">
-          {hoveredValue ? 'Historical Value' : 'Current Value'}
+      <div className="flex items-center justify-between mb-1 pb-1 border-b border-surface-3">
+        <span className="text-xs font-medium text-text-secondary">
+          {hoveredValue ? 'Historical' : 'Current'}
         </span>
         <span className="text-xs text-text-muted">
           {new Date(displayTime).toLocaleTimeString()}
         </span>
       </div>
 
-      {/* Main Value with Crosshair */}
-      <div className="flex items-center justify-center mb-4">
-        {/* Crosshair background */}
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-surface-3 -translate-x-1/2 opacity-50" />
-          {/* Horizontal line */}
-          <div className="absolute top-1/2 left-0 right-0 h-px bg-surface-3 -translate-y-1/2 opacity-50" />
-
-          {/* Value */}
-          <div className={`relative text-5xl font-bold ${getValueColor(displayValue)} px-6 py-4`}>
-            {displayValue}
-            <span className="text-xl ml-1 text-text-muted">{units}</span>
-          </div>
+      {/* Main Value - Compact */}
+      <div className="flex items-center justify-center my-2">
+        <div className={`text-3xl font-bold ${getValueColor(displayValue)}`}>
+          {displayValue}
+          <span className="text-sm ml-1 text-text-muted">{units}</span>
         </div>
       </div>
 
-      {/* Direction and Delta */}
+      {/* Direction and Delta - Compact */}
       {!hoveredValue && direction && (
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{getDirectionSymbol(direction)}</span>
-            <span className="text-text-secondary font-medium">{direction}</span>
+        <div className="flex items-center justify-between text-xs border-t border-surface-3 pt-1">
+          <div className="flex items-center gap-1">
+            <span className="text-lg">{getDirectionSymbol(direction)}</span>
           </div>
           {delta !== null && (
             <div className={`font-mono ${delta > 0 ? 'text-orange-500' : delta < 0 ? 'text-blue-500' : 'text-text-muted'}`}>
-              {delta > 0 ? '+' : ''}{delta.toFixed(1)} {units}
+              {delta > 0 ? '+' : ''}{delta.toFixed(1)}
             </div>
           )}
         </div>
       )}
-
-      {/* Placeholder for future data */}
-      <div className="mt-4 pt-3 border-t border-surface-3">
-        <div className="text-xs text-text-muted text-center">
-          Additional data will appear here
-        </div>
-      </div>
     </div>
   );
 }

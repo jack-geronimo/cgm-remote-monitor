@@ -169,7 +169,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     const opts: uPlot.Options = {
       title: 'Blood Glucose',
       width: chartRef.current.clientWidth,
-      height: 400,
+      height: 500,
       plugins: [bgZonesPlugin],
       scales: {
         x: {
@@ -392,7 +392,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       if (uplotRef.current && chartRef.current) {
         uplotRef.current.setSize({
           width: chartRef.current.clientWidth,
-          height: 400,
+          height: 500,
         });
       }
     };
@@ -442,7 +442,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   if (!viewport) {
     return (
       <div className="card">
-        <div className="flex items-center justify-center h-[400px]">
+        <div className="flex items-center justify-center h-[500px]">
           <div className="text-text-secondary">Loading chart...</div>
         </div>
       </div>
