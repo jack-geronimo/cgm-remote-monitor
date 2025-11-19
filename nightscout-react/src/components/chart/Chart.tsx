@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -33,6 +33,8 @@ export function Chart() {
   const [selectedHours, setSelectedHours] = useState(3); // Default 3 hours
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
+  const isInitialMount = useRef(true);
+  const savedScrollInfo = useRef<{ scrollLeft: number; scrollWidth: number } | null>(null);
 
   // Use individual selectors to avoid recreating selector function on every render
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
@@ -74,10 +76,26 @@ export function Chart() {
     return Math.max(calculatedWidth, 1200);
   }, [chartData, selectedHours]);
 
-  // Auto-scroll to the right (newest data) when data updates
+  // Auto-scroll to the right (newest data) only on initial mount
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    if (isInitialMount.current && scrollContainerRef.current && chartData.length > 0) {
       scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+      isInitialMount.current = false;
+    }
+  }, [chartData]);
+
+  // Restore scroll position after loading older data (synchronous to prevent flicker)
+  useLayoutEffect(() => {
+    if (savedScrollInfo.current && scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth } = savedScrollInfo.current;
+      const newScrollWidth = scrollContainerRef.current.scrollWidth;
+      const scrollWidthDiff = newScrollWidth - scrollWidth;
+
+      // Restore position maintaining visual location
+      scrollContainerRef.current.scrollLeft = scrollLeft + scrollWidthDiff;
+
+      // Clear saved info
+      savedScrollInfo.current = null;
     }
   }, [chartData]);
 
@@ -87,41 +105,35 @@ export function Chart() {
 
     const { scrollLeft } = scrollContainerRef.current;
 
-    // If scrolled near the left edge (within 200px), load more data
-    if (scrollLeft < 200) {
+    // If scrolled near the left edge (within 300px), load more data
+    if (scrollLeft < 300) {
       setIsLoadingMore(true);
 
       // Get oldest entry timestamp
       const oldestEntry = entries[entries.length - 1];
       if (oldestEntry) {
         try {
-          // Save current scroll position
-          const currentScrollLeft = scrollContainerRef.current.scrollLeft;
-          const currentScrollWidth = scrollContainerRef.current.scrollWidth;
+          // Save current scroll position for restoration
+          savedScrollInfo.current = {
+            scrollLeft: scrollContainerRef.current.scrollLeft,
+            scrollWidth: scrollContainerRef.current.scrollWidth,
+          };
 
-          // Fetch older data (24 hours worth)
-          const olderEntries = await fetchOlderEntries(oldestEntry.mills, 288);
+          // Fetch older data (2 days worth for smoother scrolling)
+          const olderEntries = await fetchOlderEntries(oldestEntry.mills, 576);
 
           if (olderEntries.length > 0) {
             // Add older entries to store
+            // The scroll position will be restored by useLayoutEffect
             prependOlderEntries(olderEntries);
-
-            // Restore scroll position after data loads
-            // We need to wait for the next frame to let the DOM update
-            requestAnimationFrame(() => {
-              if (scrollContainerRef.current) {
-                const newScrollWidth = scrollContainerRef.current.scrollWidth;
-                const scrollWidthDiff = newScrollWidth - currentScrollWidth;
-                // Adjust scroll position to maintain visual position
-                scrollContainerRef.current.scrollLeft = currentScrollLeft + scrollWidthDiff;
-              }
-            });
           } else {
             // No more data available
             setHasMoreData(false);
+            savedScrollInfo.current = null;
           }
         } catch (error) {
           console.error('Error loading more data:', error);
+          savedScrollInfo.current = null;
         }
       }
 
