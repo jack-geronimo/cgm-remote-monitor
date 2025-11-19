@@ -33,7 +33,7 @@ export function Chart() {
   const [selectedHours, setSelectedHours] = useState(3); // Default 3 hours
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
-  const isInitialMount = useRef(true);
+  const hasAutoScrolled = useRef(false);
   const savedScrollInfo = useRef<{ scrollLeft: number; scrollWidth: number } | null>(null);
 
   // Use individual selectors to avoid recreating selector function on every render
@@ -76,11 +76,16 @@ export function Chart() {
     return Math.max(calculatedWidth, 1200);
   }, [chartData, selectedHours]);
 
-  // Auto-scroll to the right (newest data) only on initial mount
+  // Auto-scroll to newest data on initial load
   useEffect(() => {
-    if (isInitialMount.current && scrollContainerRef.current && chartData.length > 0) {
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
-      isInitialMount.current = false;
+    if (!hasAutoScrolled.current && scrollContainerRef.current && chartData.length > 0) {
+      // Wait for render
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+          hasAutoScrolled.current = true;
+        }
+      }, 100);
     }
   }, [chartData]);
 
