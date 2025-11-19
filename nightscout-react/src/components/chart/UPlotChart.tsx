@@ -28,6 +28,7 @@ const PIXELS_PER_HOUR: Record<number, number> = {
 export function UPlotChart() {
   const entries = useBgStore((state) => state.entries);
   const prependOlderEntries = useBgStore((state) => state.prependOlderEntries);
+  const setViewportCenter = useBgStore((state) => state.setViewportCenter);
   const units = useSettingsStore((state) => state.units);
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
   const alarmHigh = useSettingsStore((state) => state.alarmHigh);
@@ -39,11 +40,12 @@ export function UPlotChart() {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const uplotRef = useRef<uPlot | null>(null);
-  const [selectedHours, setSelectedHours] = useState(3);
+  const [selectedHours, setSelectedHours] = useState(12); // Start with 12h view
   const [isLoading, setIsLoading] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
   const isLoadingRef = useRef(false);
   const previousScrollLeft = useRef<number | null>(null);
+  const updateViewportTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate chart width based on data and zoom level
   const chartWidth = useRef(0);
@@ -195,20 +197,60 @@ export function UPlotChart() {
     }
   }, [entries]);
 
-  // Scroll to right (most recent) on initial load
+  // Scroll to right (most recent) on initial load and set initial viewport
   useLayoutEffect(() => {
     if (containerRef.current && entries.length > 0) {
       const container = containerRef.current;
       container.scrollLeft = container.scrollWidth;
+
+      // Set initial viewport to current time
+      const newestTimestamp = entries[0]?.mills || entries[0]?.date;
+      if (newestTimestamp) {
+        setViewportCenter(newestTimestamp);
+      }
     }
   }, []);
 
-  // Handle scroll to load older data
+  // Update viewport center when scrolling (debounced)
+  const updateViewportFromScroll = () => {
+    const container = containerRef.current;
+    if (!container || entries.length === 0) return;
+
+    const scrollLeft = container.scrollLeft;
+    const scrollWidth = container.scrollWidth;
+    const clientWidth = container.clientWidth;
+
+    // Calculate which timestamp is at the center of the visible area
+    const scrollPercent = (scrollLeft + clientWidth / 2) / scrollWidth;
+
+    if (entries.length > 0) {
+      const oldestTimestamp = entries[entries.length - 1]?.mills || entries[entries.length - 1]?.date;
+      const newestTimestamp = entries[0]?.mills || entries[0]?.date;
+
+      if (oldestTimestamp && newestTimestamp) {
+        const totalTimeSpan = newestTimestamp - oldestTimestamp;
+        const centerTimestamp = newestTimestamp - (totalTimeSpan * scrollPercent);
+
+        setViewportCenter(centerTimestamp);
+      }
+    }
+  };
+
+  // Handle scroll to load older data and update viewport
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleScroll = async () => {
+      // Debounce viewport update
+      if (updateViewportTimeout.current) {
+        clearTimeout(updateViewportTimeout.current);
+      }
+      updateViewportTimeout.current = setTimeout(() => {
+        updateViewportFromScroll();
+      }, 500);
+
+      // Load more data if needed
       if (isLoadingRef.current || !hasMoreData) {
         return;
       }
@@ -248,8 +290,13 @@ export function UPlotChart() {
     };
 
     container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [entries, hasMoreData, prependOlderEntries]);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (updateViewportTimeout.current) {
+        clearTimeout(updateViewportTimeout.current);
+      }
+    };
+  }, [entries, hasMoreData, prependOlderEntries, setViewportCenter]);
 
   // Calculate Y-axis values for fixed axis
   const yAxisValues = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400];

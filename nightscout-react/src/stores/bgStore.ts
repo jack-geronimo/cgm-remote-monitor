@@ -15,13 +15,22 @@ interface BgState {
   // All Nightscout data
   data: NightscoutData | null;
 
+  // Viewport for sliding window
+  viewportCenter: number | null; // Timestamp at center of visible area
+
   // Actions
   setCurrentBg: (bg: number, direction: Direction, timestamp: number) => void;
   setEntries: (entries: BgEntry[]) => void;
   setData: (data: NightscoutData) => void;
   updateFromSocket: (entry: BgEntry) => void;
   prependOlderEntries: (olderEntries: BgEntry[]) => void;
+  setViewportCenter: (timestamp: number) => void;
+  trimToViewport: () => void;
 }
+
+// Sliding window: keep ±7 days around viewport center
+const VIEWPORT_BUFFER_DAYS = 7;
+const VIEWPORT_BUFFER_MS = VIEWPORT_BUFFER_DAYS * 24 * 60 * 60 * 1000;
 
 export const useBgStore = create<BgState>((set, get) => ({
   currentBg: null,
@@ -31,6 +40,7 @@ export const useBgStore = create<BgState>((set, get) => ({
   entries: [],
   isStale: false,
   data: null,
+  viewportCenter: null,
 
   setCurrentBg: (bg, direction, timestamp) => {
     const prev = get().currentBg;
@@ -116,16 +126,46 @@ export const useBgStore = create<BgState>((set, get) => ({
     const uniqueOlderEntries = olderEntries.filter(e => !existingIds.has(e._id));
 
     // Append older entries to the end (since entries are sorted newest first)
-    let mergedEntries = [...entries, ...uniqueOlderEntries];
-
-    // Memory management: Keep max 10000 entries (~35 days at 5min intervals)
-    // Canvas rendering can handle this amount without issues
-    // Always keep the newest entries (at the beginning of the array)
-    if (mergedEntries.length > 10000) {
-      mergedEntries = mergedEntries.slice(0, 10000);
-    }
+    const mergedEntries = [...entries, ...uniqueOlderEntries];
 
     set({ entries: mergedEntries });
+
+    // Trim to viewport after adding new data
+    get().trimToViewport();
+  },
+
+  setViewportCenter: (timestamp) => {
+    set({ viewportCenter: timestamp });
+    // Trim entries outside the viewport window
+    get().trimToViewport();
+  },
+
+  trimToViewport: () => {
+    const { entries, viewportCenter } = get();
+
+    // If no viewport is set, keep all entries (up to a reasonable limit)
+    if (!viewportCenter) {
+      // Keep max 10000 entries as fallback
+      if (entries.length > 10000) {
+        set({ entries: entries.slice(0, 10000) });
+      }
+      return;
+    }
+
+    // Calculate time window: viewport center ± buffer
+    const minTime = viewportCenter - VIEWPORT_BUFFER_MS;
+    const maxTime = viewportCenter + VIEWPORT_BUFFER_MS;
+
+    // Filter entries within the window
+    const filteredEntries = entries.filter(entry => {
+      const timestamp = entry.mills || entry.date;
+      return timestamp >= minTime && timestamp <= maxTime;
+    });
+
+    // Only update if we actually removed entries
+    if (filteredEntries.length < entries.length) {
+      set({ entries: filteredEntries });
+    }
   },
 }));
 
