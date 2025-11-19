@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
   ReferenceArea,
 } from 'recharts';
@@ -19,6 +18,7 @@ import { cn } from '../../lib/utils';
 export function Chart() {
   const entries = useBgStore((state) => state.entries);
   const units = useSettingsStore((state) => state.units);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Use individual selectors to avoid recreating selector function on every render
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
@@ -28,13 +28,9 @@ export function Chart() {
   const alarmLow = useSettingsStore((state) => state.alarmLow);
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
-  // Get last 12 hours of data
+  // Get all available data (up to 24 hours / 288 entries)
   const chartData = useMemo(() => {
-    const now = Date.now();
-    const twelveHoursAgo = now - 12 * 60 * 60 * 1000;
-
     return entries
-      .filter((entry) => entry.mills >= twelveHoursAgo)
       .map((entry) => ({
         time: entry.mills,
         bg: entry.sgv,
@@ -42,6 +38,18 @@ export function Chart() {
       }))
       .reverse(); // Recharts expects chronological order
   }, [entries]);
+
+  // Calculate chart width based on number of data points (5 pixels per entry for good spacing)
+  const chartWidth = useMemo(() => {
+    return Math.max(chartData.length * 5, 800); // Minimum 800px
+  }, [chartData.length]);
+
+  // Auto-scroll to the right (newest data) when data updates
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [chartData]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -103,11 +111,20 @@ export function Chart() {
     <div className="card">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-text-primary">Glucose Chart</h2>
-        <p className="text-sm text-text-secondary">Last 12 hours</p>
+        <p className="text-sm text-text-secondary">Last 24 hours (scroll left to see history)</p>
       </div>
 
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+      <div
+        ref={scrollContainerRef}
+        className="overflow-x-auto overflow-y-hidden"
+        style={{ width: '100%' }}
+      >
+        <LineChart
+          data={chartData}
+          width={chartWidth}
+          height={400}
+          margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
 
           {/* Target ranges */}
@@ -183,7 +200,7 @@ export function Chart() {
             animationDuration={300}
           />
         </LineChart>
-      </ResponsiveContainer>
+      </div>
     </div>
   );
 }
