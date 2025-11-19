@@ -197,8 +197,23 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     if (!viewport || allEntries.length === 0) return;
 
     const delta = viewport.rangeMs * 0.5; // Move by 50% of range
-    shiftViewport(delta);
-    checkAndLoadNewerData();
+
+    // Don't scroll beyond newest available data
+    const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
+    if (!newestTimestamp) return;
+
+    // Calculate what the new center would be
+    const newCenter = viewport.center + delta;
+
+    // Limit to newest data - don't scroll into the future
+    const maxCenter = newestTimestamp;
+    const limitedCenter = Math.min(newCenter, maxCenter);
+
+    // Only shift if we're actually moving
+    if (limitedCenter > viewport.center) {
+      shiftViewport(limitedCenter - viewport.center);
+      checkAndLoadNewerData();
+    }
   };
 
   // Check if we need to load older data - PROACTIVE LOADING
