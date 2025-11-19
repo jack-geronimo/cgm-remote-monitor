@@ -436,8 +436,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
       const pixelDist = Math.abs(closestPointX - mouseX);
 
-      // Only show if we're close enough to a data point (within 50 pixels)
-      if (pixelDist > 50) {
+      // Only show if:
+      // 1. We're close enough to a data point (within 50 pixels)
+      // 2. The data point is actually visible within the grid (not outside viewport)
+      const isWithinGrid = closestPointX >= bbox.left && closestPointX <= bbox.left + bbox.width;
+
+      if (pixelDist > 50 || !isWithinGrid) {
         setHoveredValue(null);
         return;
       }
