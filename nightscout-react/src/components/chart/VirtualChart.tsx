@@ -204,8 +204,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
+        // Enable cursor on hover, not just drag
+        show: true,
         drag: {
-          x: true,
+          x: false,  // Disable drag to avoid conflict with mouse wheel
           y: false,
         },
         sync: {
