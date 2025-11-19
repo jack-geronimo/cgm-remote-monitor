@@ -218,43 +218,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           x: false,  // Disable drag to avoid conflict with mouse wheel
           y: false,
         },
-        sync: {
-          key: 'bg-chart',
-        },
         points: {
           show: true,  // Show point on the line
           size: 8,
           stroke: (u, seriesIdx) => u.series[seriesIdx].stroke as string,
           fill: (u, seriesIdx) => '#fff',
         },
-      },
-      hooks: {
-        setCursor: [
-          (u) => {
-            const idx = u.cursor.idx;
-            if (idx != null && idx >= 0 && u.data[0].length > 0) {
-              const timestamp = u.data[0][idx];
-              const value = u.data[1][idx];
-
-              if (timestamp && value && isFinite(value)) {
-                // Get pixel coordinates of the point
-                const x = u.valToPos(timestamp, 'x');
-                const y = u.valToPos(value, 'y');
-
-                setHoveredValue({
-                  time: timestamp * 1000,
-                  value,
-                  x,
-                  y,
-                });
-              } else {
-                setHoveredValue(null);
-              }
-            } else {
-              setHoveredValue(null);
-            }
-          },
-        ],
       },
     };
 
@@ -426,6 +395,66 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Handle mouse movement over chart for tooltip
+  useEffect(() => {
+    if (!chartRef.current || !uplotRef.current) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const chart = uplotRef.current;
+      if (!chart) return;
+
+      const rect = chartRef.current!.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Convert pixel position to data value (x-axis = time)
+      const timestamp = chart.posToVal(mouseX, 'x');
+
+      // Find closest data point
+      const data = chart.data;
+      if (!data || !data[0] || data[0].length === 0) return;
+
+      let closestIdx = 0;
+      let minDist = Infinity;
+
+      for (let i = 0; i < data[0].length; i++) {
+        const dist = Math.abs(data[0][i] - timestamp);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIdx = i;
+        }
+      }
+
+      const value = data[1][closestIdx];
+      const exactTimestamp = data[0][closestIdx];
+
+      if (value && isFinite(value) && exactTimestamp) {
+        const x = chart.valToPos(exactTimestamp, 'x');
+        const y = chart.valToPos(value, 'y');
+
+        setHoveredValue({
+          time: exactTimestamp * 1000,
+          value,
+          x,
+          y,
+        });
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredValue(null);
+    };
+
+    const chartElement = chartRef.current;
+    chartElement.addEventListener('mousemove', handleMouseMove);
+    chartElement.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      chartElement.removeEventListener('mousemove', handleMouseMove);
+      chartElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [uplotRef.current, chartData]);
 
   // Handle mouse wheel scrolling
   useEffect(() => {
