@@ -15,8 +15,11 @@ interface BgState {
   // All Nightscout data
   data: NightscoutData | null;
 
-  // Viewport for sliding window
-  viewportCenter: number | null; // Timestamp at center of visible area
+  // Virtual Viewport for efficient rendering
+  viewport: {
+    center: number;      // Timestamp at center of visible area
+    rangeMs: number;     // How much time to show (e.g., 12h = 43200000ms)
+  } | null;
 
   // Actions
   setCurrentBg: (bg: number, direction: Direction, timestamp: number) => void;
@@ -24,8 +27,11 @@ interface BgState {
   setData: (data: NightscoutData) => void;
   updateFromSocket: (entry: BgEntry) => void;
   prependOlderEntries: (olderEntries: BgEntry[]) => void;
-  setViewportCenter: (timestamp: number) => void;
-  trimToViewport: () => void;
+
+  // Viewport actions
+  initViewport: (center: number, rangeMs: number) => void;
+  shiftViewport: (deltaMs: number) => void;
+  setViewportRange: (rangeMs: number) => void;
 }
 
 // Sliding window: keep ±7 days around viewport center
@@ -40,7 +46,7 @@ export const useBgStore = create<BgState>((set, get) => ({
   entries: [],
   isStale: false,
   data: null,
-  viewportCenter: null,
+  viewport: null,
 
   setCurrentBg: (bg, direction, timestamp) => {
     const prev = get().currentBg;
@@ -136,40 +142,56 @@ export const useBgStore = create<BgState>((set, get) => ({
     set({ entries: mergedEntries });
   },
 
-  setViewportCenter: (timestamp) => {
-    set({ viewportCenter: timestamp });
-    // Note: We don't trim immediately on every viewport change
-    // This prevents the chart from losing data while scrolling
+  // Initialize viewport with center and range
+  initViewport: (center, rangeMs) => {
+    set({ viewport: { center, rangeMs } });
   },
 
-  trimToViewport: () => {
-    const { entries, viewportCenter } = get();
+  // Shift viewport by delta milliseconds (for panning)
+  shiftViewport: (deltaMs) => {
+    const { viewport } = get();
+    if (!viewport) return;
 
-    // If no viewport is set, keep all entries (up to a reasonable limit)
-    if (!viewportCenter) {
-      // Keep max 10000 entries as fallback
-      if (entries.length > 10000) {
-        set({ entries: entries.slice(0, 10000) });
-      }
-      return;
-    }
-
-    // Calculate time window: viewport center ± buffer
-    const minTime = viewportCenter - VIEWPORT_BUFFER_MS;
-    const maxTime = viewportCenter + VIEWPORT_BUFFER_MS;
-
-    // Filter entries within the window
-    const filteredEntries = entries.filter(entry => {
-      const timestamp = entry.mills || entry.date;
-      return timestamp >= minTime && timestamp <= maxTime;
+    set({
+      viewport: {
+        ...viewport,
+        center: viewport.center + deltaMs,
+      },
     });
+  },
 
-    // Only update if we actually removed entries
-    if (filteredEntries.length < entries.length) {
-      set({ entries: filteredEntries });
-    }
+  // Change viewport range (for zoom)
+  setViewportRange: (rangeMs) => {
+    const { viewport } = get();
+    if (!viewport) return;
+
+    set({
+      viewport: {
+        ...viewport,
+        rangeMs,
+      },
+    });
   },
 }));
+
+// Computed selector for visible entries in viewport + buffer
+export const useVisibleEntries = () => {
+  const entries = useBgStore((state) => state.entries);
+  const viewport = useBgStore((state) => state.viewport);
+
+  if (!viewport) return entries;
+
+  // Add buffer (±2 hours) around visible range
+  const BUFFER_MS = 2 * 60 * 60 * 1000; // 2 hours
+  const halfRange = viewport.rangeMs / 2;
+  const minTime = viewport.center - halfRange - BUFFER_MS;
+  const maxTime = viewport.center + halfRange + BUFFER_MS;
+
+  return entries.filter(entry => {
+    const timestamp = entry.mills || entry.date;
+    return timestamp >= minTime && timestamp <= maxTime;
+  });
+};
 
 // Computed selector for stale data (>15 minutes old)
 export const useIsStale = () => {

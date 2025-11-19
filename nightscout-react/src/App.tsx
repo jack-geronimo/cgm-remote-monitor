@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BgDisplay } from './components/bg-display/BgDisplay';
-import { UPlotChart } from './components/chart/UPlotChart';
+import { VirtualChart } from './components/chart/VirtualChart';
 import { Pills } from './components/pills/Pills';
 import { useSocket } from './hooks/useSocket';
 import { useBgData } from './hooks/useBgData';
@@ -82,7 +82,7 @@ function App() {
         </div>
 
         {/* Full Width Chart */}
-        <UPlotChart />
+        <VirtualChart defaultRange="12h" />
 
         {/* Footer */}
         <footer className="mt-8 text-center text-sm text-text-muted">
