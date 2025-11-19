@@ -210,41 +210,19 @@ export function UPlotChart() {
 
     const handleScroll = async () => {
       if (isLoadingRef.current || !hasMoreData) {
-        console.log('Scroll: skipping load', {
-          isLoading: isLoadingRef.current,
-          hasMoreData
-        });
         return;
       }
 
       const scrollLeft = container.scrollLeft;
-      const scrollWidth = container.scrollWidth;
-      const clientWidth = container.clientWidth;
-      const threshold = 400; // Increased threshold
-
-      console.log('Scroll event:', {
-        scrollLeft,
-        scrollWidth,
-        clientWidth,
-        threshold,
-        shouldLoad: scrollLeft < threshold
-      });
+      const threshold = 400;
 
       // Load more when scrolling near the left edge
       if (scrollLeft < threshold) {
         const oldestEntry = entries[entries.length - 1];
-        if (!oldestEntry) {
-          console.log('No oldest entry found');
-          return;
-        }
+        if (!oldestEntry) return;
 
         const oldestTimestamp = oldestEntry.mills || oldestEntry.date;
-        if (!oldestTimestamp) {
-          console.log('No oldest timestamp found');
-          return;
-        }
-
-        console.log('Loading older entries before:', new Date(oldestTimestamp).toLocaleString());
+        if (!oldestTimestamp) return;
 
         isLoadingRef.current = true;
         setIsLoading(true);
@@ -255,17 +233,9 @@ export function UPlotChart() {
 
           const olderEntries = await fetchOlderEntries(oldestTimestamp, 500);
 
-          console.log('Loaded older entries:', olderEntries.length);
-
           if (olderEntries.length === 0) {
-            console.log('No more data available from API');
             setHasMoreData(false);
           } else {
-            console.log('Adding entries, oldest:',
-              olderEntries.length > 0
-                ? new Date(olderEntries[olderEntries.length - 1].mills || olderEntries[olderEntries.length - 1].date).toLocaleString()
-                : 'none'
-            );
             prependOlderEntries(olderEntries);
           }
         } catch (error) {
