@@ -446,7 +446,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         setHoveredValue({
           time: exactTimestamp * 1000, // Convert back to milliseconds
           value,
-          lineX: clampedX, // Vertical line follows mouse
+          lineX: dataPointX, // Vertical line at data point (snaps to data)
           x: dataPointX, // Tooltip at data point
           y: dataPointY, // Tooltip at data point
           bbox: {
