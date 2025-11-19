@@ -48,6 +48,7 @@ export function UPlotChart() {
   const isLoadingRef = useRef(false);
   const previousScrollLeft = useRef<number | null>(null);
   const updateViewportTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hasScrolledToEnd = useRef(false);
 
   // Calculate chart width based on data and zoom level
   const chartWidth = useRef(0);
@@ -217,9 +218,13 @@ export function UPlotChart() {
 
   // Scroll to right (most recent) on initial load and set initial viewport
   useLayoutEffect(() => {
-    if (containerRef.current && entries.length > 0) {
+    // Only scroll once when chart is first rendered with data
+    if (!hasScrolledToEnd.current && containerRef.current && entries.length > 0 && uplotRef.current) {
       const container = containerRef.current;
+
+      // Scroll to the far right (newest data)
       container.scrollLeft = container.scrollWidth;
+      hasScrolledToEnd.current = true;
 
       // Set initial viewport to current time
       const newestTimestamp = entries[0]?.mills || entries[0]?.date;
@@ -227,7 +232,7 @@ export function UPlotChart() {
         setViewportCenter(newestTimestamp);
       }
     }
-  }, []);
+  }, [entries, setViewportCenter]);
 
   // Update viewport center when scrolling (debounced)
   const updateViewportFromScroll = () => {
