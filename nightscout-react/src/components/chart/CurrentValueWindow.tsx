@@ -1,6 +1,5 @@
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatTimestamp } from '../../lib/utils';
 
 interface CurrentValueWindowProps {
   hoveredValue?: { time: number; value: number } | null;
