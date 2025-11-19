@@ -413,12 +413,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       const bbox = chart.bbox;
 
-      // Check if mouse is within plot area - be generous at edges
-      if (mouseX < bbox.left - 5 || mouseX > bbox.left + bbox.width + 5 ||
-          mouseY < bbox.top - 5 || mouseY > bbox.top + bbox.height + 5) {
-        setHoveredValue(null);
-        return;
-      }
+      // Don't check bbox boundaries - data points can be rendered outside bbox!
+      // We only check the 50px distance to nearest point below.
 
       // Find nearest data point by PIXEL distance
       const data = chart.data;
