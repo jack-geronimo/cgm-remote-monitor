@@ -449,11 +449,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       if (debugPositions) {
         const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
+        const closestPointY = chart.valToPos(data[1][closestIdx], 'y');
         console.log('CLOSEST POINT:');
         console.log('  Index:', closestIdx);
         console.log('  Time:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
         console.log('  Value:', data[1][closestIdx]);
         console.log('  X position (canvas):', closestPointX.toFixed(1));
+        console.log('  Y position (canvas):', closestPointY.toFixed(1));
         console.log('  Distance to mouse:', minDist.toFixed(1), 'px');
 
         // Show neighboring points to verify we picked the right one
