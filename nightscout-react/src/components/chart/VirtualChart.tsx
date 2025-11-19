@@ -416,74 +416,28 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // Don't check bbox boundaries - data points can be rendered outside bbox!
       // We only check the 50px distance to nearest point below.
 
-      // Find nearest data point by PIXEL distance
+      // Convert mouse X position to timestamp using uPlot's scale
+      const mouseTimestamp = chart.posToVal(mouseX, 'x');
+
+      // Find nearest data point by TIME distance (not pixel distance!)
       const data = chart.data;
       let closestIdx = 0;
-      let minDist = Infinity;
-
-      // CRITICAL: valToPos returns positions relative to canvas, but we need to compare
-      // with mouseX which is also relative to canvas. Let's verify the coordinate system.
-      const debugPositions = Math.random() < 0.05;
-
-      if (debugPositions && data[0].length > 0) {
-        console.log('=== DEBUG: Coordinate System ===');
-        console.log('Mouse X (canvas):', mouseX.toFixed(1));
-        console.log('Mouse Y (canvas):', mouseY.toFixed(1));
-        console.log('BBox:', { left: bbox.left, top: bbox.top, width: bbox.width, height: bbox.height });
-        console.log('Total data points:', data[0].length);
-
-        // Show the visual range of data points
-        const firstPointX = chart.valToPos(data[0][0], 'x');
-        const lastPointX = chart.valToPos(data[0][data[0].length - 1], 'x');
-        console.log('Data point X range:', firstPointX.toFixed(1), 'to', lastPointX.toFixed(1));
-        console.log('First timestamp:', new Date(data[0][0] * 1000).toLocaleTimeString());
-        console.log('Last timestamp:', new Date(data[0][data[0].length - 1] * 1000).toLocaleTimeString());
-
-        // Check the actual X scale range
-        const xScale = chart.scales.x;
-        console.log('X Scale range:', xScale.min, 'to', xScale.max);
-        console.log('X Scale min as time:', new Date(xScale.min * 1000).toLocaleTimeString());
-        console.log('X Scale max as time:', new Date(xScale.max * 1000).toLocaleTimeString());
-      }
+      let minTimeDist = Infinity;
 
       for (let i = 0; i < data[0].length; i++) {
-        // Calculate pixel position of this data point on canvas
-        const pointX = chart.valToPos(data[0][i], 'x');
-        // Find distance in pixels to mouse
-        const dist = Math.abs(pointX - mouseX);
-        if (dist < minDist) {
-          minDist = dist;
+        const timeDist = Math.abs(data[0][i] - mouseTimestamp);
+        if (timeDist < minTimeDist) {
+          minTimeDist = timeDist;
           closestIdx = i;
         }
       }
 
-      if (debugPositions) {
-        const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
-        const closestPointY = chart.valToPos(data[1][closestIdx], 'y');
-        console.log('CLOSEST POINT:');
-        console.log('  Index:', closestIdx);
-        console.log('  Time:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
-        console.log('  Value:', data[1][closestIdx]);
-        console.log('  X position (canvas):', closestPointX.toFixed(1));
-        console.log('  Y position (canvas):', closestPointY.toFixed(1));
-        console.log('  Distance to mouse:', minDist.toFixed(1), 'px');
-
-        // Show neighboring points to verify we picked the right one
-        console.log('NEIGHBORS:');
-        for (let i = Math.max(0, closestIdx - 3); i <= Math.min(data[0].length - 1, closestIdx + 3); i++) {
-          const px = chart.valToPos(data[0][i], 'x');
-          const dist = Math.abs(px - mouseX);
-          const marker = i === closestIdx ? ' ← SELECTED' : '';
-          console.log(`  [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, val=${data[1][i]}${marker}`);
-        }
-        console.log('=====================================');
-      }
+      // Convert time distance to pixel distance to check if we're close enough
+      const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
+      const pixelDist = Math.abs(closestPointX - mouseX);
 
       // Only show if we're close enough to a data point (within 50 pixels)
-      if (minDist > 50) {
-        if (Math.random() < 0.05) {
-          console.log('TOO FAR - hiding cursor, minDist:', minDist.toFixed(1));
-        }
+      if (pixelDist > 50) {
         setHoveredValue(null);
         return;
       }

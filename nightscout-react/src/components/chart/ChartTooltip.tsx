@@ -81,7 +81,6 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
           {value.value} <span className="text-xs font-normal">{units}</span>
         </span>
         <span className="text-xs opacity-90">{timeStr}</span>
-        <span className="text-xs opacity-70">Index: {value.index}</span>
       </div>
     </div>
   );

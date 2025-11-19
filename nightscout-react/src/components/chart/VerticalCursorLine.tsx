@@ -9,20 +9,14 @@ interface VerticalCursorLineProps {
 }
 
 export function VerticalCursorLine({ x, bbox }: VerticalCursorLineProps) {
-  // DEBUG: Log actual line position
-  if (Math.random() < 0.05) {
-    console.log('LINE RENDERING:', {
-      lineX: x.toFixed(1),
-      bboxLeft: bbox.left.toFixed(1),
-      bboxWidth: bbox.width.toFixed(1),
-    });
-  }
+  // Clamp line position to bbox boundaries
+  const clampedX = Math.max(bbox.left, Math.min(x, bbox.left + bbox.width));
 
   return (
     <div
       className="absolute w-px bg-blue-500/50 pointer-events-none"
       style={{
-        left: `${x}px`,
+        left: `${clampedX}px`,
         top: `${bbox.top}px`,
         height: `${bbox.height}px`,
       }}
