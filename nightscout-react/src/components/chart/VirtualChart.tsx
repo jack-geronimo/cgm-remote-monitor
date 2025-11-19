@@ -39,12 +39,15 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
-  // Initialize viewport on mount
+  // Initialize viewport on mount - START WITH NEWEST DATA FROM DB
   useEffect(() => {
     if (!viewport && allEntries.length > 0) {
-      const now = Date.now();
+      // Use the newest entry's timestamp, not Date.now()!
+      const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
       const rangeMs = TIME_RANGES[defaultRange];
-      initViewport(now, rangeMs);
+
+      // Center viewport on the newest data
+      initViewport(newestTimestamp, rangeMs);
     }
   }, [viewport, allEntries, defaultRange, initViewport]);
 
@@ -190,29 +193,48 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
   // Handle pan right (go forward in time)
   const handlePanRight = () => {
-    if (!viewport) return;
+    if (!viewport || allEntries.length === 0) return;
+
     const delta = viewport.rangeMs * 0.5; // Move by 50% of range
-    const maxCenter = Date.now();
-    const newCenter = Math.min(viewport.center + delta, maxCenter);
+
+    // Don't go beyond newest data
+    const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
+    const newCenter = Math.min(viewport.center + delta, newestTimestamp);
+
     shiftViewport(newCenter - viewport.center);
   };
 
-  // Check if we need to load older data
+  // Check if we need to load older data - PROACTIVE LOADING
   const checkAndLoadOlderData = async () => {
     if (isLoadingRef.current || allEntries.length === 0 || !viewport) return;
 
     const oldestTimestamp = allEntries[allEntries.length - 1]?.mills || allEntries[allEntries.length - 1]?.date;
     if (!oldestTimestamp) return;
 
-    // If viewport is within 2 hours of oldest data, load more
-    const buffer = 2 * 60 * 60 * 1000; // 2 hours
-    if (viewport.center - viewport.rangeMs / 2 < oldestTimestamp + buffer) {
+    // Calculate left edge of viewport
+    const viewportLeftEdge = viewport.center - viewport.rangeMs / 2;
+
+    // Load more data if viewport left edge is within 1.5x range of oldest data
+    // This ensures we always have data to scroll to
+    const loadThreshold = viewport.rangeMs * 1.5;
+
+    if (viewportLeftEdge < oldestTimestamp + loadThreshold) {
+      console.log('Loading older data...', {
+        viewportLeftEdge: new Date(viewportLeftEdge),
+        oldestTimestamp: new Date(oldestTimestamp),
+        threshold: loadThreshold / 1000 / 60 / 60 + 'h',
+      });
+
       isLoadingRef.current = true;
 
       try {
-        const olderEntries = await fetchOlderEntries(oldestTimestamp, 500);
+        // Load 3 days worth of data (864 entries at 5min intervals)
+        const olderEntries = await fetchOlderEntries(oldestTimestamp, 864);
         if (olderEntries.length > 0) {
           prependOlderEntries(olderEntries);
+          console.log(`Loaded ${olderEntries.length} older entries`);
+        } else {
+          console.log('No more older data available');
         }
       } catch (error) {
         console.error('Failed to load older entries:', error);
