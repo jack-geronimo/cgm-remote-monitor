@@ -10,7 +10,6 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from 'recharts';
-import { shallow } from 'zustand/shallow';
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatBgValue, getBgColor } from '../../lib/utils';
@@ -20,17 +19,14 @@ import { cn } from '../../lib/utils';
 export function Chart() {
   const entries = useBgStore((state) => state.entries);
   const units = useSettingsStore((state) => state.units);
-  const settings = useSettingsStore(
-    (state) => ({
-      alarmUrgentHigh: state.alarmUrgentHigh,
-      alarmHigh: state.alarmHigh,
-      targetTop: state.targetTop,
-      targetBottom: state.targetBottom,
-      alarmLow: state.alarmLow,
-      alarmUrgentLow: state.alarmUrgentLow,
-    }),
-    shallow
-  );
+
+  // Use individual selectors to avoid recreating selector function on every render
+  const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
+  const alarmHigh = useSettingsStore((state) => state.alarmHigh);
+  const targetTop = useSettingsStore((state) => state.targetTop);
+  const targetBottom = useSettingsStore((state) => state.targetBottom);
+  const alarmLow = useSettingsStore((state) => state.alarmLow);
+  const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
   // Get last 12 hours of data
   const chartData = useMemo(() => {
@@ -85,12 +81,12 @@ export function Chart() {
     if (chartData.length === 0) return [40, 400];
 
     const values = chartData.map((d) => d.bg);
-    const min = Math.min(...values, settings.alarmUrgentLow);
-    const max = Math.max(...values, settings.alarmUrgentHigh);
+    const min = Math.min(...values, alarmUrgentLow);
+    const max = Math.max(...values, alarmUrgentHigh);
     const padding = (max - min) * 0.1;
 
     return [Math.max(40, min - padding), Math.min(400, max + padding)];
-  }, [chartData, settings]);
+  }, [chartData, alarmUrgentLow, alarmUrgentHigh]);
 
   if (chartData.length === 0) {
     return (
@@ -116,48 +112,48 @@ export function Chart() {
 
           {/* Target ranges */}
           <ReferenceArea
-            y1={settings.targetBottom}
-            y2={settings.targetTop}
+            y1={targetBottom}
+            y2={targetTop}
             fill="#10B981"
             fillOpacity={0.1}
             label={{ value: 'Target', position: 'insideTopRight', fill: '#10B981' }}
           />
 
           <ReferenceArea
-            y1={settings.alarmLow}
-            y2={settings.targetBottom}
+            y1={alarmLow}
+            y2={targetBottom}
             fill="#F59E0B"
             fillOpacity={0.1}
           />
 
           <ReferenceArea
-            y1={settings.targetTop}
-            y2={settings.alarmHigh}
+            y1={targetTop}
+            y2={alarmHigh}
             fill="#F59E0B"
             fillOpacity={0.1}
           />
 
           <ReferenceArea
             y1={yDomain[0]}
-            y2={settings.alarmUrgentLow}
+            y2={alarmUrgentLow}
             fill="#EF4444"
             fillOpacity={0.1}
           />
 
           <ReferenceArea
-            y1={settings.alarmUrgentHigh}
+            y1={alarmUrgentHigh}
             y2={yDomain[1]}
             fill="#EF4444"
             fillOpacity={0.1}
           />
 
           {/* Reference lines */}
-          <ReferenceLine y={settings.targetBottom} stroke="#10B981" strokeDasharray="3 3" />
-          <ReferenceLine y={settings.targetTop} stroke="#10B981" strokeDasharray="3 3" />
-          <ReferenceLine y={settings.alarmLow} stroke="#F59E0B" strokeDasharray="3 3" />
-          <ReferenceLine y={settings.alarmHigh} stroke="#F59E0B" strokeDasharray="3 3" />
-          <ReferenceLine y={settings.alarmUrgentLow} stroke="#EF4444" strokeDasharray="3 3" />
-          <ReferenceLine y={settings.alarmUrgentHigh} stroke="#EF4444" strokeDasharray="3 3" />
+          <ReferenceLine y={targetBottom} stroke="#10B981" strokeDasharray="3 3" />
+          <ReferenceLine y={targetTop} stroke="#10B981" strokeDasharray="3 3" />
+          <ReferenceLine y={alarmLow} stroke="#F59E0B" strokeDasharray="3 3" />
+          <ReferenceLine y={alarmHigh} stroke="#F59E0B" strokeDasharray="3 3" />
+          <ReferenceLine y={alarmUrgentLow} stroke="#EF4444" strokeDasharray="3 3" />
+          <ReferenceLine y={alarmUrgentHigh} stroke="#EF4444" strokeDasharray="3 3" />
 
           <XAxis
             dataKey="time"

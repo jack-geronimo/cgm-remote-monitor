@@ -45,26 +45,48 @@ export const useBgStore = create<BgState>((set, get) => ({
   },
 
   setEntries: (entries) => {
-    set({ entries });
+    // Batch all updates into a single set() call to avoid cascading re-renders
+    const updates: Partial<BgState> = { entries };
 
     // Update current BG from latest entry
     if (entries.length > 0) {
       const latest = entries[0];
-      get().setCurrentBg(latest.sgv, latest.direction, latest.mills);
+      const prev = get().currentBg;
+      const delta = prev !== null ? latest.sgv - prev : null;
+
+      updates.currentBg = latest.sgv;
+      updates.direction = latest.direction;
+      updates.timestamp = latest.mills;
+      updates.delta = delta;
+      updates.isStale = false;
     }
+
+    set(updates);
   },
 
   setData: (data) => {
-    set({ data });
+    // Batch all updates into a single set() call to avoid cascading re-renders
+    const updates: Partial<BgState> = { data };
 
     // Update entries and current BG
     if (data.entries.length > 0) {
-      get().setEntries(data.entries);
+      const latest = data.entries[0];
+      const prev = get().currentBg;
+      const delta = prev !== null ? latest.sgv - prev : null;
+
+      updates.entries = data.entries;
+      updates.currentBg = latest.sgv;
+      updates.direction = latest.direction;
+      updates.timestamp = latest.mills;
+      updates.delta = delta;
+      updates.isStale = false;
     }
+
+    set(updates);
   },
 
   updateFromSocket: (entry) => {
-    const { entries } = get();
+    const { entries, currentBg } = get();
 
     // Add new entry to the beginning
     const newEntries = [entry, ...entries];
@@ -72,8 +94,17 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Keep only last 288 entries (24 hours at 5min intervals)
     const trimmedEntries = newEntries.slice(0, 288);
 
-    set({ entries: trimmedEntries });
-    get().setCurrentBg(entry.sgv, entry.direction, entry.mills);
+    // Batch all updates into a single set() call to avoid cascading re-renders
+    const delta = currentBg !== null ? entry.sgv - currentBg : null;
+
+    set({
+      entries: trimmedEntries,
+      currentBg: entry.sgv,
+      direction: entry.direction,
+      timestamp: entry.mills,
+      delta,
+      isStale: false,
+    });
   },
 }));
 
