@@ -12,6 +12,7 @@ import {
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatBgValue, getBgColor } from '../../lib/utils';
+import { fetchOlderEntries } from '../../lib/api';
 import dayjs from 'dayjs';
 import { cn } from '../../lib/utils';
 
@@ -26,10 +27,12 @@ const TIME_RANGES = [
 
 export function Chart() {
   const entries = useBgStore((state) => state.entries);
+  const prependOlderEntries = useBgStore((state) => state.prependOlderEntries);
   const units = useSettingsStore((state) => state.units);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [selectedHours, setSelectedHours] = useState(3); // Default 3 hours
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreData, setHasMoreData] = useState(true);
 
   // Use individual selectors to avoid recreating selector function on every render
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
@@ -71,21 +74,43 @@ export function Chart() {
 
   // Handle loading more data when scrolling left
   const handleScroll = useCallback(async () => {
-    if (!scrollContainerRef.current || isLoadingMore) return;
+    if (!scrollContainerRef.current || isLoadingMore || !hasMoreData) return;
 
     const { scrollLeft } = scrollContainerRef.current;
 
-    // If scrolled near the left edge (within 100px), load more data
-    if (scrollLeft < 100) {
+    // If scrolled near the left edge (within 200px), load more data
+    if (scrollLeft < 200) {
       setIsLoadingMore(true);
 
       // Get oldest entry timestamp
       const oldestEntry = entries[entries.length - 1];
       if (oldestEntry) {
         try {
-          // Fetch older data (this would need API support)
-          // For now, we just use what we have
-          console.log('Would load data older than:', new Date(oldestEntry.mills));
+          // Save current scroll position
+          const currentScrollLeft = scrollContainerRef.current.scrollLeft;
+          const currentScrollWidth = scrollContainerRef.current.scrollWidth;
+
+          // Fetch older data (24 hours worth)
+          const olderEntries = await fetchOlderEntries(oldestEntry.mills, 288);
+
+          if (olderEntries.length > 0) {
+            // Add older entries to store
+            prependOlderEntries(olderEntries);
+
+            // Restore scroll position after data loads
+            // We need to wait for the next frame to let the DOM update
+            requestAnimationFrame(() => {
+              if (scrollContainerRef.current) {
+                const newScrollWidth = scrollContainerRef.current.scrollWidth;
+                const scrollWidthDiff = newScrollWidth - currentScrollWidth;
+                // Adjust scroll position to maintain visual position
+                scrollContainerRef.current.scrollLeft = currentScrollLeft + scrollWidthDiff;
+              }
+            });
+          } else {
+            // No more data available
+            setHasMoreData(false);
+          }
         } catch (error) {
           console.error('Error loading more data:', error);
         }
@@ -93,7 +118,7 @@ export function Chart() {
 
       setIsLoadingMore(false);
     }
-  }, [entries, isLoadingMore]);
+  }, [entries, isLoadingMore, hasMoreData, prependOlderEntries]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -271,8 +296,18 @@ export function Chart() {
 
       {/* Loading indicator */}
       {isLoadingMore && (
-        <div className="mt-2 text-center text-sm text-text-secondary">
-          Loading older data...
+        <div className="mt-2 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2">
+            <div className="w-4 h-4 border-2 border-bg-info border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm text-text-secondary">Loading older data...</span>
+          </div>
+        </div>
+      )}
+
+      {/* No more data indicator */}
+      {!hasMoreData && (
+        <div className="mt-2 text-center text-xs text-text-muted">
+          No more data available
         </div>
       )}
     </div>

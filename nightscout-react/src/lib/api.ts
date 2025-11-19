@@ -72,6 +72,29 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
 }
 
 /**
+ * Fetch older entries before a given timestamp
+ * Used for infinite scroll backwards in time
+ */
+export async function fetchOlderEntries(beforeTimestamp: number, count: number = 288): Promise<BgEntry[]> {
+  try {
+    const headers = await getHeaders();
+    // Nightscout API: find[date][$lt]=timestamp filters entries before the given date
+    const url = `${API_BASE}/entries.json?find[date][$lt]=${beforeTimestamp}&count=${count}`;
+    const res = await fetch(url, { headers });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch older entries: ${res.status} ${res.statusText}`);
+    }
+
+    const entries: BgEntry[] = await res.json();
+    return entries;
+  } catch (error) {
+    console.error('Failed to fetch older entries:', error);
+    throw error;
+  }
+}
+
+/**
  * Fetch server status
  */
 export async function fetchServerStatus() {

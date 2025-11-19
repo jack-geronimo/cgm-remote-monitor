@@ -20,6 +20,7 @@ interface BgState {
   setEntries: (entries: BgEntry[]) => void;
   setData: (data: NightscoutData) => void;
   updateFromSocket: (entry: BgEntry) => void;
+  prependOlderEntries: (olderEntries: BgEntry[]) => void;
 }
 
 export const useBgStore = create<BgState>((set, get) => ({
@@ -105,6 +106,19 @@ export const useBgStore = create<BgState>((set, get) => ({
       delta,
       isStale: false,
     });
+  },
+
+  prependOlderEntries: (olderEntries) => {
+    const { entries } = get();
+
+    // Filter out duplicates and merge older entries at the end
+    const existingIds = new Set(entries.map(e => e._id));
+    const uniqueOlderEntries = olderEntries.filter(e => !existingIds.has(e._id));
+
+    // Append older entries to the end (since entries are sorted newest first)
+    const mergedEntries = [...entries, ...uniqueOlderEntries];
+
+    set({ entries: mergedEntries });
   },
 }));
 
