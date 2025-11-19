@@ -56,10 +56,24 @@ export function Pills() {
   const iobValue = (iob !== null && !isNaN(iob)) ? `${iob.toFixed(2)}U` : '---';
   const iobStatus = (iob !== null && iob > 3) ? 'warning' : 'info';
 
-  // Calculate COB from device status
-  const cob = data?.devicestatus?.[0]?.loop?.cob?.cob;
-  const cobValue = cob ? `${Math.round(cob)}g` : '---';
-  const cobStatus = cob && cob > 100 ? 'warning' : 'info';
+  // Calculate COB from device status - try multiple sources
+  let cob: number | null = null;
+
+  if (deviceStatus) {
+    // Try different COB sources
+    if (deviceStatus.loop?.cob?.cob !== undefined) {
+      cob = Number(deviceStatus.loop.cob.cob);
+    } else if (deviceStatus.openaps?.cob !== undefined) {
+      cob = Number(deviceStatus.openaps.cob);
+    } else if (deviceStatus.pump?.cob !== undefined) {
+      cob = Number(deviceStatus.pump.cob);
+    }
+
+    console.log('Extracted COB:', cob);
+  }
+
+  const cobValue = (cob !== null && !isNaN(cob)) ? `${Math.round(cob)}g` : '---';
+  const cobStatus = (cob !== null && cob > 100) ? 'warning' : 'info';
 
   // Pump battery
   const pumpBattery = data?.devicestatus?.[0]?.pump?.battery;
