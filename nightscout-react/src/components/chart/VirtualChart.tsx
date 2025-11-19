@@ -5,6 +5,7 @@ import { useBgStore, useVisibleEntries } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { fetchOlderEntries, fetchNewerEntries } from '../../lib/api';
 import { CurrentValueWindow } from './CurrentValueWindow';
+import { ChartTooltip } from './ChartTooltip';
 
 // Time range presets in milliseconds
 const TIME_RANGES = {
@@ -22,7 +23,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const chartRef = useRef<HTMLDivElement>(null);
   const uplotRef = useRef<uPlot | null>(null);
   const isLoadingRef = useRef(false);
-  const [hoveredValue, setHoveredValue] = useState<{ time: number; value: number } | null>(null);
+  const [hoveredValue, setHoveredValue] = useState<{
+    time: number;
+    value: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Store data
   const allEntries = useBgStore((state) => state.entries);
@@ -204,8 +210,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
-        // Enable cursor on hover, not just drag
+        // Only show vertical line, no crosshair
         show: true,
+        x: true,  // Show vertical line
+        y: false, // Hide horizontal line
         drag: {
           x: false,  // Disable drag to avoid conflict with mouse wheel
           y: false,
@@ -213,16 +221,34 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         sync: {
           key: 'bg-chart',
         },
+        points: {
+          show: true,  // Show point on the line
+          size: 8,
+          stroke: (u, seriesIdx) => u.series[seriesIdx].stroke as string,
+          fill: (u, seriesIdx) => '#fff',
+        },
       },
       hooks: {
         setCursor: [
           (u) => {
             const idx = u.cursor.idx;
-            if (idx != null && idx >= 0) {
+            if (idx != null && idx >= 0 && u.data[0].length > 0) {
               const timestamp = u.data[0][idx];
               const value = u.data[1][idx];
-              if (timestamp && value) {
-                setHoveredValue({ time: timestamp * 1000, value });
+
+              if (timestamp && value && isFinite(value)) {
+                // Get pixel coordinates of the point
+                const x = u.valToPos(timestamp, 'x');
+                const y = u.valToPos(value, 'y');
+
+                setHoveredValue({
+                  time: timestamp * 1000,
+                  value,
+                  x,
+                  y,
+                });
+              } else {
+                setHoveredValue(null);
               }
             } else {
               setHoveredValue(null);
@@ -451,7 +477,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
   return (
     <>
-      <CurrentValueWindow hoveredValue={hoveredValue} />
+      <CurrentValueWindow />
       <div className="card">
         {/* Controls */}
         <div className="flex justify-between items-center mb-4">
@@ -473,8 +499,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         </div>
       </div>
 
-      {/* Chart */}
-      <div ref={chartRef} className="w-full" />
+      {/* Chart Container - relative for tooltip positioning */}
+      <div className="relative w-full">
+        <div ref={chartRef} className="w-full" />
+        <ChartTooltip value={hoveredValue} />
+      </div>
       </div>
     </>
   );

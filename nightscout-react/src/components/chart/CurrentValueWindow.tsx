@@ -1,22 +1,14 @@
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
-interface CurrentValueWindowProps {
-  hoveredValue?: { time: number; value: number } | null;
-}
-
-export function CurrentValueWindow({ hoveredValue }: CurrentValueWindowProps) {
+export function CurrentValueWindow() {
   const currentBg = useBgStore((state) => state.currentBg);
   const direction = useBgStore((state) => state.direction);
   const delta = useBgStore((state) => state.delta);
   const timestamp = useBgStore((state) => state.timestamp);
   const units = useSettingsStore((state) => state.units);
 
-  // Use hovered value if available, otherwise current BG
-  const displayValue = hoveredValue?.value ?? currentBg;
-  const displayTime = hoveredValue?.time ?? timestamp;
-
-  if (!displayValue || !displayTime) {
+  if (!currentBg || !timestamp) {
     return null;
   }
 
@@ -54,24 +46,22 @@ export function CurrentValueWindow({ hoveredValue }: CurrentValueWindowProps) {
     <div className="fixed top-20 right-4 z-50 bg-surface-2 border border-surface-3 rounded-lg shadow-lg p-2 min-w-[180px] pointer-events-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-1 pb-1 border-b border-surface-3">
-        <span className="text-xs font-medium text-text-secondary">
-          {hoveredValue ? 'Historical' : 'Current'}
-        </span>
+        <span className="text-xs font-medium text-text-secondary">Current</span>
         <span className="text-xs text-text-muted">
-          {new Date(displayTime).toLocaleTimeString()}
+          {new Date(timestamp).toLocaleTimeString()}
         </span>
       </div>
 
       {/* Main Value - Compact */}
       <div className="flex items-center justify-center my-2">
-        <div className={`text-3xl font-bold ${getValueColor(displayValue)}`}>
-          {displayValue}
+        <div className={`text-3xl font-bold ${getValueColor(currentBg)}`}>
+          {currentBg}
           <span className="text-sm ml-1 text-text-muted">{units}</span>
         </div>
       </div>
 
       {/* Direction and Delta - Compact */}
-      {!hoveredValue && direction && (
+      {direction && (
         <div className="flex items-center justify-between text-xs border-t border-surface-3 pt-1">
           <div className="flex items-center gap-1">
             <span className="text-lg">{getDirectionSymbol(direction)}</span>
