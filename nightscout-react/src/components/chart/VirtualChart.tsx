@@ -502,7 +502,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       {/* Chart Container - relative for tooltip positioning */}
       <div className="relative w-full">
         <div ref={chartRef} className="w-full" />
-        <ChartTooltip value={hoveredValue} />
+        {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
+        <div className="absolute inset-0 pointer-events-none">
+          <ChartTooltip value={hoveredValue} />
+        </div>
       </div>
       </div>
     </>

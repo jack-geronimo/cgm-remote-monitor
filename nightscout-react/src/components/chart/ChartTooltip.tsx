@@ -61,15 +61,16 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
   return (
     <div
       style={tooltipStyle}
-      className={`${colors.bg} ${colors.border} border-2 rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap`}
+      className={`${colors.bg} ${colors.border} border-2 rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap pointer-events-none`}
     >
       {/* Arrow pointing down to the data point */}
       <div
-        className={`absolute left-1/2 bottom-0 translate-y-full -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent ${colors.arrow.replace('border-r-', 'border-t-')}`}
+        className={`absolute left-1/2 bottom-0 translate-y-full -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent ${colors.arrow.replace('border-r-', 'border-t-')} pointer-events-none`}
         style={{
           borderLeftWidth: '6px',
           borderRightWidth: '6px',
           borderTopWidth: '6px',
+          pointerEvents: 'none',
         }}
       />
 
