@@ -42,28 +42,37 @@ export function Chart() {
   const alarmLow = useSettingsStore((state) => state.alarmLow);
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
-  // Get data for selected time range
+  // Prepare all available data for charting
   const chartData = useMemo(() => {
-    const now = Date.now();
-    const timeRangeMs = selectedHours * 60 * 60 * 1000;
-    const startTime = now - timeRangeMs;
-
     return entries
-      .filter((entry) => entry.mills >= startTime)
       .map((entry) => ({
         time: entry.mills,
         bg: entry.sgv,
         timeFormatted: dayjs(entry.mills).format('HH:mm'),
       }))
       .reverse(); // Recharts expects chronological order
-  }, [entries, selectedHours]);
+  }, [entries]);
 
-  // Calculate chart width based on selected time range and data points
-  // More pixels per entry for shorter time ranges for better readability
+  // Calculate chart width based on selected time range (zoom level)
+  // selectedHours controls how much horizontal space each hour takes
+  // More pixels per hour for shorter time ranges = more zoomed in
   const chartWidth = useMemo(() => {
-    const pixelsPerEntry = selectedHours <= 3 ? 10 : selectedHours <= 6 ? 7 : 5;
-    return Math.max(chartData.length * pixelsPerEntry, 800);
-  }, [chartData.length, selectedHours]);
+    if (chartData.length === 0) return 800;
+
+    // Calculate pixels per hour based on zoom level
+    const pixelsPerHour = selectedHours <= 3 ? 400 : selectedHours <= 6 ? 250 : selectedHours <= 12 ? 150 : 100;
+
+    // Calculate total time span of data in hours
+    const oldestTime = chartData[0]?.time || Date.now();
+    const newestTime = chartData[chartData.length - 1]?.time || Date.now();
+    const totalHours = (newestTime - oldestTime) / (60 * 60 * 1000);
+
+    // Calculate total width needed
+    const calculatedWidth = totalHours * pixelsPerHour;
+
+    // Ensure minimum width
+    return Math.max(calculatedWidth, 800);
+  }, [chartData, selectedHours]);
 
   // Auto-scroll to the right (newest data) when data updates
   useEffect(() => {
@@ -182,10 +191,10 @@ export function Chart() {
       <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-text-primary">Glucose Chart</h2>
-          <p className="text-sm text-text-secondary">Scroll horizontally to navigate</p>
+          <p className="text-sm text-text-secondary">Zoom level - scroll horizontally to navigate through all data</p>
         </div>
 
-        {/* Time range buttons */}
+        {/* Time range buttons (zoom level) */}
         <div className="flex gap-2">
           {TIME_RANGES.map(({ hours, label }) => (
             <button
