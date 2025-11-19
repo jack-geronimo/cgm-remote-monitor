@@ -245,20 +245,56 @@ export function Chart() {
         </div>
       </div>
 
-      {/* Scrollable chart container */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-hidden"
-        style={{ width: '100%' }}
-      >
-        <LineChart
-          data={chartData}
-          width={chartWidth}
-          height={400}
-          margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+      {/* Chart area with fixed Y-axis */}
+      <div className="flex">
+        {/* Fixed Y-axis on the left */}
+        <div className="flex-shrink-0" style={{ width: '60px' }}>
+          <svg width="60" height="400">
+            <g transform="translate(0, 10)">
+              {/* Y-axis labels */}
+              {Array.from({ length: 9 }, (_, i) => {
+                const value = yDomain[0] + (yDomain[1] - yDomain[0]) * (8 - i) / 8;
+                const y = (380 * i) / 8;
+                return (
+                  <g key={i}>
+                    <line
+                      x1="50"
+                      y1={y}
+                      x2="60"
+                      y2={y}
+                      stroke="rgba(255,255,255,0.5)"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x="45"
+                      y={y}
+                      textAnchor="end"
+                      dominantBaseline="middle"
+                      fill="rgba(255,255,255,0.5)"
+                      fontSize="12"
+                    >
+                      {formatBgValue(Math.round(value), units)}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
+
+        {/* Scrollable chart container */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="overflow-x-auto overflow-y-hidden flex-1"
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <LineChart
+            data={chartData}
+            width={chartWidth}
+            height={400}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
 
           {/* Target ranges */}
           <ReferenceArea
@@ -310,17 +346,18 @@ export function Chart() {
             type="number"
             domain={['dataMin', 'dataMax']}
             tickCount={xAxisTickCount}
-            tickFormatter={(time) => dayjs(time).format('HH:mm')}
+            tickFormatter={(time) => {
+              const date = dayjs(time);
+              // Show date + time for better context
+              return date.format('DD.MM HH:mm');
+            }}
             stroke="rgba(255,255,255,0.5)"
-            style={{ fontSize: '12px' }}
+            style={{ fontSize: '11px' }}
+            height={50}
           />
 
-          <YAxis
-            domain={yDomain}
-            stroke="rgba(255,255,255,0.5)"
-            style={{ fontSize: '12px' }}
-            tickFormatter={(value) => formatBgValue(value, units)}
-          />
+          {/* Y-axis is rendered separately on the left, not here */}
+          <YAxis hide domain={yDomain} />
 
           <Tooltip content={<CustomTooltip />} />
 
@@ -334,6 +371,7 @@ export function Chart() {
             animationDuration={300}
           />
         </LineChart>
+        </div>
       </div>
 
       {/* Loading indicator */}
