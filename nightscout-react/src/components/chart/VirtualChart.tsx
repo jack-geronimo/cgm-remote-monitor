@@ -475,6 +475,9 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       // Only show if we're close enough to a data point (within 50 pixels)
       if (minDist > 50) {
+        if (Math.random() < 0.05) {
+          console.log('TOO FAR - hiding cursor, minDist:', minDist.toFixed(1));
+        }
         setHoveredValue(null);
         return;
       }
