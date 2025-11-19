@@ -221,52 +221,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
-        // Enable full cursor tracking - DO NOT set x/y to false, that breaks tracking!
-        show: true,
-        points: {
-          show: false,
-        },
-        drag: {
-          x: false,
-          y: false,
-        },
-      },
-      hooks: {
-        setCursor: [
-          (u) => {
-            const idx = u.cursor.idx;
-
-            if (idx == null || idx < 0 || !u.data[0] || u.data[0].length === 0) {
-              setHoveredValue(null);
-              return;
-            }
-
-            const timestamp = u.data[0][idx];
-            const value = u.data[1][idx];
-
-            if (timestamp && value && isFinite(value)) {
-              // Use uPlot's own coordinate conversion
-              const x = u.valToPos(timestamp, 'x');
-              const y = u.valToPos(value, 'y');
-              const bbox = u.bbox;
-
-              setHoveredValue({
-                time: timestamp * 1000,
-                value,
-                x,
-                y,
-                bbox: {
-                  left: bbox.left,
-                  top: bbox.top,
-                  width: bbox.width,
-                  height: bbox.height,
-                },
-              });
-            } else {
-              setHoveredValue(null);
-            }
-          },
-        ],
+        show: false, // Completely disable uPlot's cursor - we handle it ourselves
       },
     };
 
@@ -439,6 +394,78 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Custom mouse tracking - completely independent from uPlot's cursor
+  useEffect(() => {
+    if (!chartRef.current || !uplotRef.current || chartData[0].length === 0) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const chart = uplotRef.current;
+      if (!chart) return;
+
+      const rect = chartRef.current!.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Check if mouse is within plot area
+      const bbox = chart.bbox;
+      if (mouseX < bbox.left || mouseX > bbox.left + bbox.width ||
+          mouseY < bbox.top || mouseY > bbox.top + bbox.height) {
+        setHoveredValue(null);
+        return;
+      }
+
+      // Convert mouse X position to data timestamp
+      const timestamp = chart.posToVal(mouseX, 'x');
+
+      // Find nearest data point
+      const data = chart.data;
+      let closestIdx = 0;
+      let minDist = Infinity;
+
+      for (let i = 0; i < data[0].length; i++) {
+        const dist = Math.abs(data[0][i] - timestamp);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIdx = i;
+        }
+      }
+
+      const value = data[1][closestIdx];
+      const exactTimestamp = data[0][closestIdx];
+
+      if (value != null && isFinite(value)) {
+        const x = chart.valToPos(exactTimestamp, 'x');
+        const y = chart.valToPos(value, 'y');
+
+        setHoveredValue({
+          time: exactTimestamp * 1000, // Convert back to milliseconds
+          value,
+          x,
+          y,
+          bbox: {
+            left: bbox.left,
+            top: bbox.top,
+            width: bbox.width,
+            height: bbox.height,
+          },
+        });
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredValue(null);
+    };
+
+    const chartElement = chartRef.current;
+    chartElement.addEventListener('mousemove', handleMouseMove);
+    chartElement.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      chartElement.removeEventListener('mousemove', handleMouseMove);
+      chartElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [chartData]);
+
   // Handle mouse wheel scrolling
   useEffect(() => {
     if (!chartRef.current || !viewport) return;
@@ -513,22 +540,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       {/* Chart Container - relative for tooltip positioning */}
       <div className="relative w-full">
-        <div ref={chartRef} className="w-full uplot-hide-cursor" />
+        <div ref={chartRef} className="w-full" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
           {hoveredValue && <VerticalCursorLine x={hoveredValue.x} bbox={hoveredValue.bbox} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>
-
-      {/* CSS to hide uPlot's default cursor visuals */}
-      <style>{`
-        .uplot-hide-cursor .u-cursor-x,
-        .uplot-hide-cursor .u-cursor-y,
-        .uplot-hide-cursor .u-cursor-pt {
-          display: none !important;
-        }
-      `}</style>
       </div>
     </>
   );
