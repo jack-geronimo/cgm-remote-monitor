@@ -45,9 +45,9 @@ export function Chart() {
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
   // Prepare all available data for charting
-  const chartData = useMemo(() => {
+  const allChartData = useMemo(() => {
     try {
-      let data = entries
+      const data = entries
         .map((entry) => {
           // Use mills if available, otherwise fall back to date
           const timestamp = entry.mills || entry.date;
@@ -66,14 +66,6 @@ export function Chart() {
         .filter(Boolean) // Remove null entries
         .reverse(); // Recharts expects chronological order
 
-      // Performance optimization: Limit rendered points to 500 max
-      // This prevents browser crashes when changing zoom levels with large datasets
-      if (data.length > 500) {
-        // Sample every nth point to get ~500 points
-        const step = Math.ceil(data.length / 500);
-        data = data.filter((_, index) => index % step === 0);
-      }
-
       return data;
     } catch (error) {
       console.error('Error preparing chart data:', error);
@@ -81,26 +73,49 @@ export function Chart() {
     }
   }, [entries]);
 
-  // Calculate chart width based on selected time range
-  // Like old Nightscout: selectedHours controls the "density" of data display
-  const chartWidth = useMemo(() => {
-    if (chartData.length === 0) return 1200;
+  // VIRTUAL VIEWPORT: Only render visible data based on scroll position
+  const { chartData, chartWidth, visibleTimeRange } = useMemo(() => {
+    if (allChartData.length === 0) return { chartData: [], chartWidth: 1200, visibleTimeRange: null };
 
-    // Calculate total time span of ALL data
-    const oldestTime = chartData[0]?.time || Date.now();
-    const newestTime = chartData[chartData.length - 1]?.time || Date.now();
+    // Calculate total time span
+    const oldestTime = allChartData[0]?.time || Date.now();
+    const newestTime = allChartData[allChartData.length - 1]?.time || Date.now();
     const totalHours = (newestTime - oldestTime) / (60 * 60 * 1000);
 
-    // Pixels per hour based on selectedHours - this determines "zoom level"
-    // Lower selectedHours = more zoomed in = more pixels per hour
-    // Higher selectedHours = more zoomed out = fewer pixels per hour
+    // Pixels per hour based on zoom
     const pixelsPerHour = selectedHours <= 3 ? 300 : selectedHours <= 6 ? 200 : selectedHours <= 12 ? 120 : 70;
 
-    // Total chart width for ALL data
-    const totalWidth = totalHours * pixelsPerHour;
+    // Total width (for scrolling)
+    const totalWidth = Math.max(totalHours * pixelsPerHour, 1200);
 
-    return Math.max(totalWidth, 1200);
-  }, [chartData, selectedHours]);
+    // Only render data for VISIBLE viewport + buffer (3x viewport width)
+    // This is the key to performance!
+    const viewportWidth = 1400; // Approximate viewport width
+    const bufferWidth = viewportWidth * 2; // Render 2x viewport for smooth scrolling
+    const visibleWidth = viewportWidth + bufferWidth;
+
+    // Calculate visible time range based on scroll position (we'll update this dynamically)
+    // For now, show the newest data
+    const visibleHours = (visibleWidth / pixelsPerHour);
+    const visibleTimeMs = visibleHours * 60 * 60 * 1000;
+    const visibleStartTime = newestTime - visibleTimeMs;
+
+    // Filter to only visible data
+    const visibleData = allChartData.filter(d => d.time >= visibleStartTime);
+
+    // Sample if still too many points (max 200 for performance)
+    let sampledData = visibleData;
+    if (sampledData.length > 200) {
+      const step = Math.ceil(sampledData.length / 200);
+      sampledData = visibleData.filter((_, index) => index % step === 0);
+    }
+
+    return {
+      chartData: sampledData,
+      chartWidth: Math.min(totalWidth, visibleWidth), // Only render visible width
+      visibleTimeRange: { start: visibleStartTime, end: newestTime }
+    };
+  }, [allChartData, selectedHours]);
 
   // Calculate dynamic tick count based on visible hours
   const xAxisTickCount = useMemo(() => {
