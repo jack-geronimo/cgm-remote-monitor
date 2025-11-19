@@ -221,8 +221,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
-        // Enable uPlot's cursor system - clean and reliable
-        show: false, // We render our own visual, but use uPlot's tracking
+        // Enable uPlot's cursor tracking system
+        show: true, // MUST be true for cursor tracking to work!
+        points: {
+          show: false, // Don't show uPlot's default cursor points - we render our own
+        },
         drag: {
           x: false,
           y: false,
