@@ -27,8 +27,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
-    lineX: number; // X position for vertical line (at mouse position)
-    tooltipX: number; // X position for tooltip (at data point)
+    x: number; // X position for BOTH line and tooltip (snapped to data point)
     y: number;
     bbox: {
       left: number;
@@ -484,21 +483,21 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         const canvasOffsetX = canvasRect.left - containerRect.left;
         const canvasOffsetY = canvasRect.top - containerRect.top;
 
-        // Position line at MOUSE, tooltip at DATA POINT
-        const mouseXInContainer = mouseX + canvasOffsetX;
+        // BOTH line and tooltip snap to the data point position
+        const dataPointXInContainer = dataPointX + canvasOffsetX;
 
         if (debugPositions) {
+          const mouseXInContainer = mouseX + canvasOffsetX;
           console.log('FINAL POSITIONS:');
           console.log('  Mouse X (container):', mouseXInContainer.toFixed(1));
-          console.log('  Data Point X (container):', (dataPointX + canvasOffsetX).toFixed(1));
-          console.log('  Difference:', Math.abs(mouseXInContainer - (dataPointX + canvasOffsetX)).toFixed(1), 'px');
+          console.log('  Data Point X (container):', dataPointXInContainer.toFixed(1));
+          console.log('  Snap distance:', Math.abs(mouseXInContainer - dataPointXInContainer).toFixed(1), 'px');
         }
 
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
-          lineX: mouseXInContainer, // Line follows mouse exactly
-          tooltipX: dataPointX + canvasOffsetX, // Tooltip at data point
+          x: dataPointXInContainer, // BOTH line and tooltip at data point
           y: dataPointY + canvasOffsetY,
           bbox: {
             left: bbox.left + canvasOffsetX,
@@ -601,7 +600,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         <div ref={chartRef} className="w-full" />
         {/* Tooltip overlay - pointer-events-none so it doesn't block chart */}
         <div className="absolute inset-0 pointer-events-none">
-          {hoveredValue && <VerticalCursorLine x={hoveredValue.lineX} bbox={hoveredValue.bbox} />}
+          {hoveredValue && <VerticalCursorLine x={hoveredValue.x} bbox={hoveredValue.bbox} />}
           <ChartTooltip value={hoveredValue} />
         </div>
       </div>

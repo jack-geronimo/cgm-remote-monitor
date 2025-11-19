@@ -4,7 +4,7 @@ interface ChartTooltipProps {
   value: {
     time: number;
     value: number;
-    tooltipX: number;
+    x: number;
     y: number;
   } | null;
 }
@@ -52,7 +52,7 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
   // Position tooltip directly at/above the data point
   const tooltipStyle: React.CSSProperties = {
     position: 'absolute',
-    left: `${value.tooltipX}px`,
+    left: `${value.x}px`,
     top: `${value.y - 10}px`, // Slightly above the point
     transform: 'translate(-50%, -100%)', // Center horizontally, position above
     pointerEvents: 'none', // Critical: allow mouse events to pass through
