@@ -1,7 +1,7 @@
 import type { NightscoutData, BgEntry, Treatment, DeviceStatus, Profile } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
-const API_BASE = `${API_URL}/api/v1`;
+// Use relative URLs - Vite proxy will forward to VITE_API_URL in development
+const API_BASE = '/api/v1';
 
 /**
  * Fetch current Nightscout status and initial data

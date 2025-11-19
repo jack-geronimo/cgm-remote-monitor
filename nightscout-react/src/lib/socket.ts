@@ -4,10 +4,9 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    // Use VITE_API_URL from .env.development or fallback to same origin
-    const url = import.meta.env.VITE_API_URL || window.location.origin;
-
-    socket = io(url, {
+    // In development, Vite proxy handles the connection
+    // In production, connect to same origin
+    socket = io({
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
