@@ -75,10 +75,22 @@ export function Pills() {
   const cobValue = (cob !== null && !isNaN(cob)) ? `${Math.round(cob)}g` : '---';
   const cobStatus = (cob !== null && cob > 100) ? 'warning' : 'info';
 
-  // Pump battery
-  const pumpBattery = data?.devicestatus?.[0]?.pump?.battery;
-  const pumpBatteryValue = pumpBattery ? `${pumpBattery}%` : '---';
-  const pumpBatteryStatus = pumpBattery
+  // Pump battery - handle both number and object formats
+  let pumpBattery: number | null = null;
+  if (deviceStatus?.pump?.battery !== undefined) {
+    const batteryData = deviceStatus.pump.battery;
+    if (typeof batteryData === 'number') {
+      pumpBattery = batteryData;
+    } else if (typeof batteryData === 'object' && batteryData !== null) {
+      // Try common property names
+      pumpBattery = (batteryData as any).percent ?? (batteryData as any).value ?? null;
+    }
+  }
+
+  console.log('Extracted pump battery:', pumpBattery);
+
+  const pumpBatteryValue = (pumpBattery !== null && !isNaN(pumpBattery)) ? `${Math.round(pumpBattery)}%` : '---';
+  const pumpBatteryStatus = (pumpBattery !== null && !isNaN(pumpBattery))
     ? pumpBattery < 20
       ? 'urgent'
       : pumpBattery < 50
@@ -86,10 +98,21 @@ export function Pills() {
       : 'success'
     : 'info';
 
-  // Pump reservoir
-  const reservoir = data?.devicestatus?.[0]?.pump?.reservoir;
-  const reservoirValue = reservoir ? `${reservoir}U` : '---';
-  const reservoirStatus = reservoir
+  // Pump reservoir - handle both number and object formats
+  let reservoir: number | null = null;
+  if (deviceStatus?.pump?.reservoir !== undefined) {
+    const reservoirData = deviceStatus.pump.reservoir;
+    if (typeof reservoirData === 'number') {
+      reservoir = reservoirData;
+    } else if (typeof reservoirData === 'object' && reservoirData !== null) {
+      reservoir = (reservoirData as any).value ?? (reservoirData as any).units ?? null;
+    }
+  }
+
+  console.log('Extracted reservoir:', reservoir);
+
+  const reservoirValue = (reservoir !== null && !isNaN(reservoir)) ? `${reservoir.toFixed(1)}U` : '---';
+  const reservoirStatus = (reservoir !== null && !isNaN(reservoir))
     ? reservoir < 20
       ? 'urgent'
       : reservoir < 50
@@ -97,10 +120,21 @@ export function Pills() {
       : 'success'
     : 'info';
 
-  // Uploader battery
-  const uploaderBattery = data?.devicestatus?.[0]?.uploader?.battery;
-  const uploaderBatteryValue = uploaderBattery ? `${uploaderBattery}%` : '---';
-  const uploaderBatteryStatus = uploaderBattery
+  // Uploader battery - handle both number and object formats
+  let uploaderBattery: number | null = null;
+  if (deviceStatus?.uploader?.battery !== undefined) {
+    const uploaderData = deviceStatus.uploader.battery;
+    if (typeof uploaderData === 'number') {
+      uploaderBattery = uploaderData;
+    } else if (typeof uploaderData === 'object' && uploaderData !== null) {
+      uploaderBattery = (uploaderData as any).percent ?? (uploaderData as any).value ?? null;
+    }
+  }
+
+  console.log('Extracted uploader battery:', uploaderBattery);
+
+  const uploaderBatteryValue = (uploaderBattery !== null && !isNaN(uploaderBattery)) ? `${Math.round(uploaderBattery)}%` : '---';
+  const uploaderBatteryStatus = (uploaderBattery !== null && !isNaN(uploaderBattery))
     ? uploaderBattery < 20
       ? 'urgent'
       : uploaderBattery < 50
