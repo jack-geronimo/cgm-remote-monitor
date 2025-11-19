@@ -4,9 +4,24 @@ import type { NightscoutData, BgEntry, Treatment, DeviceStatus, Profile } from '
 const API_BASE = '/api/v1';
 
 /**
+ * Hash API secret using SHA1 (Nightscout expects hashed secret)
+ */
+async function hashApiSecret(secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(secret);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+// Cache for hashed API secret
+let hashedSecret: string | null = null;
+
+/**
  * Get headers for API requests including API secret if available
  */
-function getHeaders(): HeadersInit {
+async function getHeaders(): Promise<HeadersInit> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -14,7 +29,11 @@ function getHeaders(): HeadersInit {
   // Add API secret if configured
   const apiSecret = import.meta.env.VITE_API_SECRET;
   if (apiSecret) {
-    headers['api-secret'] = apiSecret;
+    // Hash the secret if not already cached
+    if (!hashedSecret) {
+      hashedSecret = await hashApiSecret(apiSecret);
+    }
+    headers['api-secret'] = hashedSecret;
   }
 
   return headers;
@@ -25,7 +44,7 @@ function getHeaders(): HeadersInit {
  */
 export async function fetchNightscoutData(): Promise<NightscoutData> {
   try {
-    const headers = getHeaders();
+    const headers = await getHeaders();
 
     const [entriesRes, treatmentsRes, profileRes, devicestatusRes] = await Promise.all([
       fetch(`${API_BASE}/entries.json?count=288`, { headers }), // 24 hours at 5min intervals
@@ -57,7 +76,7 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
  */
 export async function fetchServerStatus() {
   try {
-    const headers = getHeaders();
+    const headers = await getHeaders();
     const res = await fetch(`${API_BASE}/status.json`, { headers });
     return await res.json();
   } catch (error) {
