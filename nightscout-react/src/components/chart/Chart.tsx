@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -15,10 +15,21 @@ import { formatBgValue, getBgColor } from '../../lib/utils';
 import dayjs from 'dayjs';
 import { cn } from '../../lib/utils';
 
+const TIME_RANGES = [
+  { hours: 2, label: '2h' },
+  { hours: 3, label: '3h' },
+  { hours: 4, label: '4h' },
+  { hours: 6, label: '6h' },
+  { hours: 12, label: '12h' },
+  { hours: 24, label: '24h' },
+];
+
 export function Chart() {
   const entries = useBgStore((state) => state.entries);
   const units = useSettingsStore((state) => state.units);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedHours, setSelectedHours] = useState(3); // Default 3 hours
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Use individual selectors to avoid recreating selector function on every render
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
@@ -28,21 +39,28 @@ export function Chart() {
   const alarmLow = useSettingsStore((state) => state.alarmLow);
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
 
-  // Get all available data (up to 24 hours / 288 entries)
+  // Get data for selected time range
   const chartData = useMemo(() => {
+    const now = Date.now();
+    const timeRangeMs = selectedHours * 60 * 60 * 1000;
+    const startTime = now - timeRangeMs;
+
     return entries
+      .filter((entry) => entry.mills >= startTime)
       .map((entry) => ({
         time: entry.mills,
         bg: entry.sgv,
         timeFormatted: dayjs(entry.mills).format('HH:mm'),
       }))
       .reverse(); // Recharts expects chronological order
-  }, [entries]);
+  }, [entries, selectedHours]);
 
-  // Calculate chart width based on number of data points (5 pixels per entry for good spacing)
+  // Calculate chart width based on selected time range and data points
+  // More pixels per entry for shorter time ranges for better readability
   const chartWidth = useMemo(() => {
-    return Math.max(chartData.length * 5, 800); // Minimum 800px
-  }, [chartData.length]);
+    const pixelsPerEntry = selectedHours <= 3 ? 10 : selectedHours <= 6 ? 7 : 5;
+    return Math.max(chartData.length * pixelsPerEntry, 800);
+  }, [chartData.length, selectedHours]);
 
   // Auto-scroll to the right (newest data) when data updates
   useEffect(() => {
@@ -50,6 +68,32 @@ export function Chart() {
       scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
     }
   }, [chartData]);
+
+  // Handle loading more data when scrolling left
+  const handleScroll = useCallback(async () => {
+    if (!scrollContainerRef.current || isLoadingMore) return;
+
+    const { scrollLeft } = scrollContainerRef.current;
+
+    // If scrolled near the left edge (within 100px), load more data
+    if (scrollLeft < 100) {
+      setIsLoadingMore(true);
+
+      // Get oldest entry timestamp
+      const oldestEntry = entries[entries.length - 1];
+      if (oldestEntry) {
+        try {
+          // Fetch older data (this would need API support)
+          // For now, we just use what we have
+          console.log('Would load data older than:', new Date(oldestEntry.mills));
+        } catch (error) {
+          console.error('Error loading more data:', error);
+        }
+      }
+
+      setIsLoadingMore(false);
+    }
+  }, [entries, isLoadingMore]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -109,13 +153,36 @@ export function Chart() {
 
   return (
     <div className="card">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-text-primary">Glucose Chart</h2>
-        <p className="text-sm text-text-secondary">Last 24 hours (scroll left to see history)</p>
+      {/* Header with time range selector */}
+      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary">Glucose Chart</h2>
+          <p className="text-sm text-text-secondary">Scroll horizontally to navigate</p>
+        </div>
+
+        {/* Time range buttons */}
+        <div className="flex gap-2">
+          {TIME_RANGES.map(({ hours, label }) => (
+            <button
+              key={hours}
+              onClick={() => setSelectedHours(hours)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                selectedHours === hours
+                  ? 'bg-bg-info text-white'
+                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Scrollable chart container */}
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="overflow-x-auto overflow-y-hidden"
         style={{ width: '100%' }}
       >
@@ -201,6 +268,13 @@ export function Chart() {
           />
         </LineChart>
       </div>
+
+      {/* Loading indicator */}
+      {isLoadingMore && (
+        <div className="mt-2 text-center text-sm text-text-secondary">
+          Loading older data...
+        </div>
+      )}
     </div>
   );
 }
