@@ -47,7 +47,7 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
     const headers = await getHeaders();
 
     const [entriesRes, treatmentsRes, profileRes, devicestatusRes] = await Promise.all([
-      fetch(`${API_BASE}/entries.json?count=1000`, { headers }), // ~3.5 days at 5min intervals for better scrolling
+      fetch(`${API_BASE}/entries.json?count=500`, { headers }), // ~1.7 days - reduced to prevent zoom crashes
       fetch(`${API_BASE}/treatments.json?count=200`, { headers }),
       fetch(`${API_BASE}/profile.json`, { headers }),
       fetch(`${API_BASE}/devicestatus.json?count=1`, { headers }),

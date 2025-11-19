@@ -66,11 +66,11 @@ export function Chart() {
         .filter(Boolean) // Remove null entries
         .reverse(); // Recharts expects chronological order
 
-      // Performance optimization: Limit rendered points to 1000 max
-      // This prevents browser crashes with huge datasets
-      if (data.length > 1000) {
-        // Sample every nth point to get ~1000 points
-        const step = Math.ceil(data.length / 1000);
+      // Performance optimization: Limit rendered points to 500 max
+      // This prevents browser crashes when changing zoom levels with large datasets
+      if (data.length > 500) {
+        // Sample every nth point to get ~500 points
+        const step = Math.ceil(data.length / 500);
         data = data.filter((_, index) => index % step === 0);
       }
 
@@ -159,9 +159,9 @@ export function Chart() {
             scrollWidth: scrollContainerRef.current.scrollWidth,
           };
 
-          // Fetch older data (2 days worth for smoother scrolling)
+          // Fetch older data (1 day worth - reduced to prevent memory issues)
           const oldestTimestamp = oldestEntry.mills || oldestEntry.date;
-          const olderEntries = await fetchOlderEntries(oldestTimestamp, 576);
+          const olderEntries = await fetchOlderEntries(oldestTimestamp, 288);
 
           if (olderEntries.length > 0) {
             // Add older entries to store

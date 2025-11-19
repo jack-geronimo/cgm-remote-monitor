@@ -118,10 +118,11 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Append older entries to the end (since entries are sorted newest first)
     let mergedEntries = [...entries, ...uniqueOlderEntries];
 
-    // Memory management: Keep max 2000 entries (~7 days at 5min intervals)
+    // Memory management: Keep max 1000 entries (~3.5 days at 5min intervals)
+    // Reduced from 2000 to prevent crashes when changing zoom levels
     // Always keep the newest entries (at the beginning of the array)
-    if (mergedEntries.length > 2000) {
-      mergedEntries = mergedEntries.slice(0, 2000);
+    if (mergedEntries.length > 1000) {
+      mergedEntries = mergedEntries.slice(0, 1000);
     }
 
     set({ entries: mergedEntries });
