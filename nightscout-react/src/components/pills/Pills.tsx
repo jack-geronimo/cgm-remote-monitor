@@ -60,8 +60,12 @@ export function Pills() {
   let cob: number | null = null;
 
   if (deviceStatus) {
-    // Try different COB sources
-    if (deviceStatus.loop?.cob?.cob !== undefined) {
+    // Try different COB sources (AAPS stores it in suggested or enacted)
+    if (deviceStatus.openaps?.suggested?.COB !== undefined) {
+      cob = Number(deviceStatus.openaps.suggested.COB);
+    } else if (deviceStatus.openaps?.enacted?.COB !== undefined) {
+      cob = Number(deviceStatus.openaps.enacted.COB);
+    } else if (deviceStatus.loop?.cob?.cob !== undefined) {
       cob = Number(deviceStatus.loop.cob.cob);
     } else if (deviceStatus.openaps?.cob !== undefined) {
       cob = Number(deviceStatus.openaps.cob);
@@ -120,9 +124,11 @@ export function Pills() {
       : 'success'
     : 'info';
 
-  // Uploader battery - handle both number and object formats
+  // Uploader battery - AAPS stores it directly on root level as uploaderBattery
   let uploaderBattery: number | null = null;
-  if (deviceStatus?.uploader?.battery !== undefined) {
+  if (deviceStatus?.uploaderBattery !== undefined) {
+    uploaderBattery = Number(deviceStatus.uploaderBattery);
+  } else if (deviceStatus?.uploader?.battery !== undefined) {
     const uploaderData = deviceStatus.uploader.battery;
     if (typeof uploaderData === 'number') {
       uploaderBattery = uploaderData;
