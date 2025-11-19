@@ -91,6 +91,14 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       }
     });
 
+    // DEBUG: Log first 10 data points to verify data array
+    console.log('=== CHART DATA ARRAY (first 10 points) ===');
+    for (let i = 0; i < Math.min(10, timestamps.length); i++) {
+      console.log(`[${i}]: ${new Date(timestamps[i] * 1000).toLocaleTimeString()} = ${values[i]}`);
+    }
+    console.log(`Total data points: ${timestamps.length}`);
+    console.log('==========================================');
+
     return [timestamps, values];
   }, [visibleEntries]);
 
@@ -243,6 +251,19 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
     // Update data without destroying chart
     uplotRef.current.setData(chartData);
+
+    // DEBUG: After setting data, log where the first 10 points are rendered
+    if (chartData[0].length > 0) {
+      console.log('=== RENDERED POSITIONS (first 10 points) ===');
+      const chart = uplotRef.current;
+      const bbox = chart.bbox;
+      for (let i = 0; i < Math.min(10, chartData[0].length); i++) {
+        const x = chart.valToPos(chartData[0][i], 'x');
+        const isVisible = x >= bbox.left && x <= bbox.left + bbox.width;
+        console.log(`[${i}]: X=${x.toFixed(1)}px (${isVisible ? 'VISIBLE' : 'outside'}), Time=${new Date(chartData[0][i] * 1000).toLocaleTimeString()}, Value=${chartData[1][i]}`);
+      }
+      console.log('==========================================');
+    }
   }, [chartData]);
 
   // Update X-axis range when viewport changes
@@ -408,7 +429,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       const canvasRect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - canvasRect.left;
-      const mouseY = e.clientY - canvasRect.top;
 
       const bbox = chart.bbox;
 
