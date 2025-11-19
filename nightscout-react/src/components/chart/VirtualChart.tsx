@@ -91,14 +91,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       }
     });
 
-    // DEBUG: Log first 10 data points to verify data array
-    console.log('=== CHART DATA ARRAY (first 10 points) ===');
-    for (let i = 0; i < Math.min(10, timestamps.length); i++) {
-      console.log(`[${i}]: ${new Date(timestamps[i] * 1000).toLocaleTimeString()} = ${values[i]}`);
-    }
-    console.log(`Total data points: ${timestamps.length}`);
-    console.log('==========================================');
-
     return [timestamps, values];
   }, [visibleEntries]);
 
@@ -251,19 +243,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
     // Update data without destroying chart
     uplotRef.current.setData(chartData);
-
-    // DEBUG: After setting data, log where the first 10 points are rendered
-    if (chartData[0].length > 0) {
-      console.log('=== RENDERED POSITIONS (first 10 points) ===');
-      const chart = uplotRef.current;
-      const bbox = chart.bbox;
-      for (let i = 0; i < Math.min(10, chartData[0].length); i++) {
-        const x = chart.valToPos(chartData[0][i], 'x');
-        const isVisible = x >= bbox.left && x <= bbox.left + bbox.width;
-        console.log(`[${i}]: X=${x.toFixed(1)}px (${isVisible ? 'VISIBLE' : 'outside'}), Time=${new Date(chartData[0][i] * 1000).toLocaleTimeString()}, Value=${chartData[1][i]}`);
-      }
-      console.log('==========================================');
-    }
   }, [chartData]);
 
   // Update X-axis range when viewport changes
@@ -423,62 +402,65 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const chart = uplotRef.current;
       if (!chart) return;
 
-      // Get canvas element position (not container!)
-      const canvas = chart.root.querySelector('canvas');
+      // Get chart's over canvas element for correct positioning
+      // uPlot creates multiple canvas layers - we need the "over" layer for interactions
+      const canvas = chart.over;
       if (!canvas) return;
 
       const canvasRect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - canvasRect.left;
 
       const bbox = chart.bbox;
-
-      // Don't check bbox boundaries - data points can be rendered outside bbox!
-      // We only check the 50px distance to nearest point below.
-
-      // Convert mouse X position to timestamp using uPlot's scale
-      const mouseTimestamp = chart.posToVal(mouseX, 'x');
-
-      // Find nearest data point by TIME distance (not pixel distance!)
       const data = chart.data;
-      let closestIdx = 0;
-      let minTimeDist = Infinity;
+
+      // Find nearest data point by PIXEL distance
+      // This is more reliable than time-based distance because it directly measures
+      // what the user sees on screen
+      let closestIdx = -1;
+      let minPixelDist = Infinity;
 
       // DEBUG: Log every 20th mouse move
       const shouldDebug = Math.random() < 0.05;
 
       for (let i = 0; i < data[0].length; i++) {
-        const timeDist = Math.abs(data[0][i] - mouseTimestamp);
-        if (timeDist < minTimeDist) {
-          minTimeDist = timeDist;
+        const pointX = chart.valToPos(data[0][i], 'x');
+        const pixelDist = Math.abs(pointX - mouseX);
+
+        if (pixelDist < minPixelDist) {
+          minPixelDist = pixelDist;
           closestIdx = i;
         }
       }
 
+      if (closestIdx === -1) {
+        setHoveredValue(null);
+        return;
+      }
+
       if (shouldDebug) {
-        console.log('=== CURSOR DEBUG ===');
+        console.log('=== CURSOR DEBUG (PIXEL-BASED) ===');
         console.log('Mouse X (px):', mouseX.toFixed(1));
-        console.log('Mouse timestamp:', new Date(mouseTimestamp * 1000).toLocaleTimeString());
+        console.log('Canvas left:', canvasRect.left);
+        console.log('Client X:', e.clientX);
+        console.log('Bbox left:', bbox.left);
         console.log('Closest index:', closestIdx);
         console.log('Closest data timestamp:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
         console.log('Closest data value:', data[1][closestIdx]);
+        console.log('Min pixel distance:', minPixelDist.toFixed(1));
 
-        // Show neighbors
+        // Show neighbors with their rendered X positions
         console.log('NEIGHBORS:');
         for (let i = Math.max(0, closestIdx - 3); i <= Math.min(data[0].length - 1, closestIdx + 3); i++) {
           const marker = i === closestIdx ? ' ← SELECTED' : '';
-          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}${marker}`);
+          const pointX = chart.valToPos(data[0][i], 'x');
+          const distFromMouse = Math.abs(pointX - mouseX);
+          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}, X=${pointX.toFixed(1)}px, dist=${distFromMouse.toFixed(1)}px${marker}`);
         }
-      }
-
-      // Convert time distance to pixel distance to check if we're close enough
-      const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
-      const pixelDist = Math.abs(closestPointX - mouseX);
-
-      if (shouldDebug) {
-        console.log('Closest point X (px):', closestPointX.toFixed(1));
-        console.log('Pixel distance:', pixelDist.toFixed(1));
         console.log('====================');
       }
+
+      const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
+      const pixelDist = minPixelDist;
 
       // Only show if:
       // 1. We're close enough to a data point (within 50 pixels)
