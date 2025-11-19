@@ -31,10 +31,30 @@ function Pill({ label, value, icon, status = 'info' }: PillProps) {
 export function Pills() {
   const data = useBgStore((state) => state.data);
 
-  // Calculate IOB from device status
-  const iob = data?.devicestatus?.[0]?.openaps?.iob ?? data?.devicestatus?.[0]?.loop?.iob?.iob;
-  const iobValue = iob ? `${Number(iob).toFixed(2)}U` : '---';
-  const iobStatus = iob && iob > 3 ? 'warning' : 'info';
+  // Calculate IOB from device status - try multiple sources
+  let iob: number | null = null;
+  const deviceStatus = data?.devicestatus?.[0];
+
+  if (deviceStatus) {
+    // Debug: log the device status structure
+    console.log('Device status:', deviceStatus);
+
+    // Try different IOB sources
+    if (deviceStatus.openaps?.iob?.iob !== undefined) {
+      iob = Number(deviceStatus.openaps.iob.iob);
+    } else if (deviceStatus.openaps?.iob !== undefined) {
+      iob = Number(deviceStatus.openaps.iob);
+    } else if (deviceStatus.loop?.iob?.iob !== undefined) {
+      iob = Number(deviceStatus.loop.iob.iob);
+    } else if (deviceStatus.pump?.iob !== undefined) {
+      iob = Number(deviceStatus.pump.iob);
+    }
+
+    console.log('Extracted IOB:', iob);
+  }
+
+  const iobValue = (iob !== null && !isNaN(iob)) ? `${iob.toFixed(2)}U` : '---';
+  const iobStatus = (iob !== null && iob > 3) ? 'warning' : 'info';
 
   // Calculate COB from device status
   const cob = data?.devicestatus?.[0]?.loop?.cob?.cob;
