@@ -399,6 +399,44 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Handle mouse wheel scrolling
+  useEffect(() => {
+    if (!chartRef.current || !viewport) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      // Scroll amount based on viewport range (10% of visible range per scroll)
+      const scrollAmount = viewport.rangeMs * 0.1;
+
+      if (e.deltaY > 0) {
+        // Scroll down = forward in time
+        const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
+        if (newestTimestamp) {
+          const newCenter = viewport.center + scrollAmount;
+          const maxCenter = newestTimestamp;
+          const limitedCenter = Math.min(newCenter, maxCenter);
+
+          if (limitedCenter > viewport.center) {
+            shiftViewport(limitedCenter - viewport.center);
+            checkAndLoadNewerData();
+          }
+        }
+      } else {
+        // Scroll up = backward in time
+        shiftViewport(-scrollAmount);
+        checkAndLoadOlderData();
+      }
+    };
+
+    const chartElement = chartRef.current;
+    chartElement.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      chartElement.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewport, allEntries, shiftViewport, checkAndLoadOlderData, checkAndLoadNewerData]);
+
   if (!viewport) {
     return (
       <div className="card">
