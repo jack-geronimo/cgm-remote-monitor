@@ -4,6 +4,7 @@ interface ChartTooltipProps {
   value: {
     time: number;
     value: number;
+    index: number;
     x: number;
     y: number;
   } | null;
@@ -80,6 +81,7 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
           {value.value} <span className="text-xs font-normal">{units}</span>
         </span>
         <span className="text-xs opacity-90">{timeStr}</span>
+        <span className="text-xs opacity-70">Index: {value.index}</span>
       </div>
     </div>
   );

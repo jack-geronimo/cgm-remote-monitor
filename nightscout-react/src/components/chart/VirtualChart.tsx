@@ -27,6 +27,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
+    index: number; // DEBUG: Array index
     x: number; // X position for BOTH line and tooltip (snapped to data point)
     y: number;
     bbox: {
@@ -502,6 +503,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
+          index: closestIdx, // DEBUG: Show which index was selected
           x: dataPointXInContainer, // BOTH line and tooltip at data point
           y: dataPointY + canvasOffsetY,
           bbox: {
