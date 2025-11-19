@@ -126,18 +126,20 @@ export const useBgStore = create<BgState>((set, get) => ({
     const uniqueOlderEntries = olderEntries.filter(e => !existingIds.has(e._id));
 
     // Append older entries to the end (since entries are sorted newest first)
-    const mergedEntries = [...entries, ...uniqueOlderEntries];
+    let mergedEntries = [...entries, ...uniqueOlderEntries];
+
+    // Limit to reasonable size (14 days of data = ~4000 entries at 5min intervals)
+    if (mergedEntries.length > 4000) {
+      mergedEntries = mergedEntries.slice(0, 4000);
+    }
 
     set({ entries: mergedEntries });
-
-    // Trim to viewport after adding new data
-    get().trimToViewport();
   },
 
   setViewportCenter: (timestamp) => {
     set({ viewportCenter: timestamp });
-    // Trim entries outside the viewport window
-    get().trimToViewport();
+    // Note: We don't trim immediately on every viewport change
+    // This prevents the chart from losing data while scrolling
   },
 
   trimToViewport: () => {

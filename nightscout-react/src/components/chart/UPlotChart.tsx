@@ -5,6 +5,7 @@ import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { cn } from '../../lib/utils';
 import { fetchOlderEntries } from '../../lib/api';
+import { CurrentValueWindow } from './CurrentValueWindow';
 
 const TIME_RANGES = [
   { hours: 2, label: '2h' },
@@ -43,6 +44,7 @@ export function UPlotChart() {
   const [selectedHours, setSelectedHours] = useState(12); // Start with 12h view
   const [isLoading, setIsLoading] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
+  const [hoveredValue, setHoveredValue] = useState<{ time: number; value: number } | null>(null);
   const isLoadingRef = useRef(false);
   const previousScrollLeft = useRef<number | null>(null);
   const updateViewportTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -132,6 +134,22 @@ export function UPlotChart() {
           x: false,
           y: false,
         },
+      },
+      hooks: {
+        setCursor: [
+          (u) => {
+            const idx = u.cursor.idx;
+            if (idx != null && idx >= 0) {
+              const timestamp = u.data[0][idx];
+              const value = u.data[1][idx];
+              if (timestamp && value) {
+                setHoveredValue({ time: timestamp * 1000, value });
+              }
+            } else {
+              setHoveredValue(null);
+            }
+          },
+        ],
       },
       plugins: [
         // Draw target ranges as background
@@ -305,9 +323,13 @@ export function UPlotChart() {
   const yMax = Math.min(400, alarmUrgentHigh + 20);
 
   return (
-    <div className="card">
-      {/* Header with time range selector */}
-      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <>
+      {/* Current Value Window */}
+      <CurrentValueWindow hoveredValue={hoveredValue} />
+
+      <div className="card">
+        {/* Header with time range selector */}
+        <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-text-primary">Glucose Chart</h2>
           <p className="text-sm text-text-secondary">
@@ -408,5 +430,6 @@ export function UPlotChart() {
         </div>
       </div>
     </div>
+    </>
   );
 }
