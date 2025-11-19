@@ -4,15 +4,34 @@ import type { NightscoutData, BgEntry, Treatment, DeviceStatus, Profile } from '
 const API_BASE = '/api/v1';
 
 /**
+ * Get headers for API requests including API secret if available
+ */
+function getHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  // Add API secret if configured
+  const apiSecret = import.meta.env.VITE_API_SECRET;
+  if (apiSecret) {
+    headers['api-secret'] = apiSecret;
+  }
+
+  return headers;
+}
+
+/**
  * Fetch current Nightscout status and initial data
  */
 export async function fetchNightscoutData(): Promise<NightscoutData> {
   try {
+    const headers = getHeaders();
+
     const [entriesRes, treatmentsRes, profileRes, devicestatusRes] = await Promise.all([
-      fetch(`${API_BASE}/entries.json?count=288`), // 24 hours at 5min intervals
-      fetch(`${API_BASE}/treatments.json?count=200`),
-      fetch(`${API_BASE}/profile.json`),
-      fetch(`${API_BASE}/devicestatus.json?count=1`),
+      fetch(`${API_BASE}/entries.json?count=288`, { headers }), // 24 hours at 5min intervals
+      fetch(`${API_BASE}/treatments.json?count=200`, { headers }),
+      fetch(`${API_BASE}/profile.json`, { headers }),
+      fetch(`${API_BASE}/devicestatus.json?count=1`, { headers }),
     ]);
 
     const entries: BgEntry[] = await entriesRes.json();
@@ -38,7 +57,8 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
  */
 export async function fetchServerStatus() {
   try {
-    const res = await fetch(`${API_BASE}/status.json`);
+    const headers = getHeaders();
+    const res = await fetch(`${API_BASE}/status.json`, { headers });
     return await res.json();
   } catch (error) {
     console.error('Failed to fetch server status:', error);
