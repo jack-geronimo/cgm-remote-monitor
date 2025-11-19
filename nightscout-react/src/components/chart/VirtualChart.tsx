@@ -27,8 +27,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
-    lineX: number; // X position for vertical line (follows mouse)
-    x: number; // X position for tooltip (at data point)
+    lineX: number; // X position for vertical line (at mouse position)
+    tooltipX: number; // X position for tooltip (at data point)
     y: number;
     bbox: {
       left: number;
@@ -484,12 +484,22 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         const canvasOffsetX = canvasRect.left - containerRect.left;
         const canvasOffsetY = canvasRect.top - containerRect.top;
 
+        // Position line at MOUSE, tooltip at DATA POINT
+        const mouseXInContainer = mouseX + canvasOffsetX;
+
+        if (debugPositions) {
+          console.log('FINAL POSITIONS:');
+          console.log('  Mouse X (container):', mouseXInContainer.toFixed(1));
+          console.log('  Data Point X (container):', (dataPointX + canvasOffsetX).toFixed(1));
+          console.log('  Difference:', Math.abs(mouseXInContainer - (dataPointX + canvasOffsetX)).toFixed(1), 'px');
+        }
+
         setHoveredValue({
           time: exactTimestamp * 1000,
           value,
-          lineX: dataPointX + canvasOffsetX, // Container coordinates
-          x: dataPointX + canvasOffsetX, // Container coordinates
-          y: dataPointY + canvasOffsetY, // Container coordinates
+          lineX: mouseXInContainer, // Line follows mouse exactly
+          tooltipX: dataPointX + canvasOffsetX, // Tooltip at data point
+          y: dataPointY + canvasOffsetY,
           bbox: {
             left: bbox.left + canvasOffsetX,
             top: bbox.top + canvasOffsetY,
