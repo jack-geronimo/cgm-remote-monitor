@@ -221,12 +221,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       ],
       cursor: {
-        // Enable tracking but disable visual rendering
-        show: true, // Enables cursor tracking system
-        x: false,   // Disable uPlot's vertical line
-        y: false,   // Disable uPlot's horizontal line
+        // Enable full cursor tracking - DO NOT set x/y to false, that breaks tracking!
+        show: true,
         points: {
-          show: false, // Disable uPlot's cursor points
+          show: false,
         },
         drag: {
           x: false,
