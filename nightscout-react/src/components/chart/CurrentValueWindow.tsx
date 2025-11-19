@@ -51,7 +51,7 @@ export function CurrentValueWindow({ hoveredValue }: CurrentValueWindowProps) {
   };
 
   return (
-    <div className="fixed top-20 right-6 z-50 bg-surface-2 border-2 border-surface-3 rounded-lg shadow-2xl p-4 min-w-[280px]">
+    <div className="fixed top-20 right-6 z-50 bg-surface-2 border-2 border-surface-3 rounded-lg shadow-2xl p-4 min-w-[280px] pointer-events-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-3">
         <span className="text-sm font-medium text-text-secondary">
