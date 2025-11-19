@@ -39,6 +39,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   // Settings
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
+  const alarmHigh = useSettingsStore((state) => state.alarmHigh);
+  const alarmLow = useSettingsStore((state) => state.alarmLow);
 
   // Initialize viewport on mount - START WITH NEWEST DATA FROM DB
   useEffect(() => {
@@ -86,10 +88,89 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     // Don't create if already exists
     if (uplotRef.current) return;
 
+    // Plugin to draw colored BG zones
+    const bgZonesPlugin: uPlot.Plugin = {
+      hooks: {
+        draw: [
+          (u) => {
+            const { ctx } = u;
+            const { left, top, width, height } = u.bbox;
+
+            ctx.save();
+
+            // Helper to convert Y value to pixel position
+            const yToPixel = (val: number) => {
+              const scale = u.scales.y;
+              if (!scale.min || !scale.max) return 0;
+              const pct = (val - scale.min) / (scale.max - scale.min);
+              return top + height - (pct * height);
+            };
+
+            // Draw zones from bottom to top
+            // Urgent Low zone (red)
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.15)'; // red-600 with opacity
+            ctx.fillRect(left, yToPixel(alarmUrgentLow), width, height);
+
+            // Low zone (yellow)
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.15)'; // yellow-500 with opacity
+            ctx.fillRect(left, yToPixel(alarmLow), width, yToPixel(alarmUrgentLow) - yToPixel(alarmLow));
+
+            // Normal zone (green)
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.15)'; // green-500 with opacity
+            ctx.fillRect(left, yToPixel(alarmHigh), width, yToPixel(alarmLow) - yToPixel(alarmHigh));
+
+            // High zone (yellow)
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.15)'; // yellow-500 with opacity
+            ctx.fillRect(left, yToPixel(alarmUrgentHigh), width, yToPixel(alarmHigh) - yToPixel(alarmUrgentHigh));
+
+            // Urgent High zone (red)
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.15)'; // red-600 with opacity
+            ctx.fillRect(left, top, width, yToPixel(alarmUrgentHigh) - top);
+
+            // Draw threshold lines
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.6)'; // red for urgent
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            // Urgent High line
+            ctx.beginPath();
+            ctx.moveTo(left, yToPixel(alarmUrgentHigh));
+            ctx.lineTo(left + width, yToPixel(alarmUrgentHigh));
+            ctx.stroke();
+
+            // Urgent Low line
+            ctx.beginPath();
+            ctx.moveTo(left, yToPixel(alarmUrgentLow));
+            ctx.lineTo(left + width, yToPixel(alarmUrgentLow));
+            ctx.stroke();
+
+            // High/Low lines (yellow)
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+            ctx.lineWidth = 1.5;
+
+            // High line
+            ctx.beginPath();
+            ctx.moveTo(left, yToPixel(alarmHigh));
+            ctx.lineTo(left + width, yToPixel(alarmHigh));
+            ctx.stroke();
+
+            // Low line
+            ctx.beginPath();
+            ctx.moveTo(left, yToPixel(alarmLow));
+            ctx.lineTo(left + width, yToPixel(alarmLow));
+            ctx.stroke();
+
+            ctx.restore();
+          },
+        ],
+      },
+    };
+
     const opts: uPlot.Options = {
       title: 'Blood Glucose',
       width: chartRef.current.clientWidth,
       height: 400,
+      plugins: [bgZonesPlugin],
       scales: {
         x: {
           time: true,
@@ -109,7 +190,23 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         {},
         {
           label: 'BG',
-          stroke: '#3B82F6',
+          stroke: (u, seriesIdx) => {
+            // Color the line based on the current value
+            const data = u.data[seriesIdx];
+            if (!data || data.length === 0) return '#3B82F6';
+
+            // Use the last (most recent) value for line color
+            const lastValue = data[data.length - 1];
+            if (typeof lastValue !== 'number') return '#3B82F6';
+
+            if (lastValue >= alarmUrgentHigh || lastValue <= alarmUrgentLow) {
+              return '#DC2626'; // red-600
+            } else if (lastValue >= alarmHigh || lastValue <= alarmLow) {
+              return '#F59E0B'; // amber-500
+            } else {
+              return '#22C55E'; // green-500
+            }
+          },
           width: 2,
           points: { show: false },
         },
@@ -159,7 +256,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         uplotRef.current = null;
       }
     };
-  }, [viewport, alarmUrgentHigh, alarmUrgentLow]); // Create only when viewport initialized
+  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData]); // Create only when viewport initialized
 
   // Update chart data when visibleEntries change - NO DESTROY/CREATE!
   useEffect(() => {
