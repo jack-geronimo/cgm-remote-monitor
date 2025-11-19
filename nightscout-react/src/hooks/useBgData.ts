@@ -4,12 +4,13 @@ import { fetchNightscoutData } from '../lib/api';
 
 /**
  * Hook to fetch and manage BG data
+ * This hook only handles data fetching - components should subscribe to store directly
  */
 export function useBgData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const { currentBg, direction, timestamp, delta, entries } = useBgStore();
+  // Only subscribe to the setData action, not the entire store
   const setData = useBgStore((state) => state.setData);
 
   useEffect(() => {
@@ -47,11 +48,6 @@ export function useBgData() {
   }, [setData]);
 
   return {
-    currentBg,
-    direction,
-    timestamp,
-    delta,
-    entries,
     isLoading,
     error,
   };

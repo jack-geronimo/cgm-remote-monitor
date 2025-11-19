@@ -1,13 +1,20 @@
 import { motion } from 'framer-motion';
 import { Clock } from 'lucide-react';
 import { useBgData } from '../../hooks/useBgData';
-import { useIsStale } from '../../stores/bgStore';
+import { useBgStore, useIsStale } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getBgColor, getTrendArrow, formatTimeAgo, formatBgValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
 export function BgDisplay() {
-  const { currentBg, direction, timestamp, delta } = useBgData();
+  // Initialize data fetching
+  useBgData();
+
+  // Subscribe to specific store values
+  const currentBg = useBgStore((state) => state.currentBg);
+  const direction = useBgStore((state) => state.direction);
+  const timestamp = useBgStore((state) => state.timestamp);
+  const delta = useBgStore((state) => state.delta);
   const isStale = useIsStale();
   const units = useSettingsStore((state) => state.units);
 
