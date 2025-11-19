@@ -424,32 +424,20 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       let closestIdx = 0;
       let minDist = Infinity;
 
-      // DEBUG: Log first few data points to see their positions
+      // CRITICAL: valToPos returns positions relative to canvas, but we need to compare
+      // with mouseX which is also relative to canvas. Let's verify the coordinate system.
       const debugPositions = Math.random() < 0.05;
+
       if (debugPositions && data[0].length > 0) {
-        console.log('=== DEBUG: Finding nearest point ===');
-        console.log('Mouse X:', mouseX.toFixed(1));
+        console.log('=== DEBUG: Coordinate System ===');
+        console.log('Mouse X (canvas):', mouseX.toFixed(1));
+        console.log('Mouse Y (canvas):', mouseY.toFixed(1));
+        console.log('BBox:', { left: bbox.left, top: bbox.top, width: bbox.width, height: bbox.height });
         console.log('Total data points:', data[0].length);
-
-        // Show first 10 and last 10 data points
-        for (let i = 0; i < Math.min(10, data[0].length); i++) {
-          const px = chart.valToPos(data[0][i], 'x');
-          const dist = Math.abs(px - mouseX);
-          console.log(`Point [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, time=${new Date(data[0][i] * 1000).toLocaleTimeString()}, val=${data[1][i]}`);
-        }
-
-        if (data[0].length > 20) {
-          console.log('...');
-          for (let i = data[0].length - 10; i < data[0].length; i++) {
-            const px = chart.valToPos(data[0][i], 'x');
-            const dist = Math.abs(px - mouseX);
-            console.log(`Point [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, time=${new Date(data[0][i] * 1000).toLocaleTimeString()}, val=${data[1][i]}`);
-          }
-        }
       }
 
       for (let i = 0; i < data[0].length; i++) {
-        // Calculate pixel position of this data point
+        // Calculate pixel position of this data point on canvas
         const pointX = chart.valToPos(data[0][i], 'x');
         // Find distance in pixels to mouse
         const dist = Math.abs(pointX - mouseX);
@@ -460,7 +448,22 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       }
 
       if (debugPositions) {
-        console.log(`CLOSEST: index=${closestIdx}, dist=${minDist.toFixed(1)}`);
+        const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
+        console.log('CLOSEST POINT:');
+        console.log('  Index:', closestIdx);
+        console.log('  Time:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
+        console.log('  Value:', data[1][closestIdx]);
+        console.log('  X position (canvas):', closestPointX.toFixed(1));
+        console.log('  Distance to mouse:', minDist.toFixed(1), 'px');
+
+        // Show neighboring points to verify we picked the right one
+        console.log('NEIGHBORS:');
+        for (let i = Math.max(0, closestIdx - 3); i <= Math.min(data[0].length - 1, closestIdx + 3); i++) {
+          const px = chart.valToPos(data[0][i], 'x');
+          const dist = Math.abs(px - mouseX);
+          const marker = i === closestIdx ? ' ← SELECTED' : '';
+          console.log(`  [${i}]: x=${px.toFixed(1)}, dist=${dist.toFixed(1)}, val=${data[1][i]}${marker}`);
+        }
         console.log('=====================================');
       }
 
