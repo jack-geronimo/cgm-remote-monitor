@@ -52,11 +52,15 @@ export function Chart() {
       console.log('Chart: last entry =', entries[entries.length - 1]);
     }
     const data = entries
-      .map((entry) => ({
-        time: entry.mills,
-        bg: entry.sgv,
-        timeFormatted: dayjs(entry.mills).format('HH:mm'),
-      }))
+      .map((entry) => {
+        // Use mills if available, otherwise fall back to date
+        const timestamp = entry.mills || entry.date;
+        return {
+          time: timestamp,
+          bg: entry.sgv,
+          timeFormatted: dayjs(timestamp).format('HH:mm'),
+        };
+      })
       .reverse(); // Recharts expects chronological order
     console.log('Chart: chartData.length =', data.length);
     if (data.length > 0) {
@@ -145,7 +149,8 @@ export function Chart() {
           };
 
           // Fetch older data (2 days worth for smoother scrolling)
-          const olderEntries = await fetchOlderEntries(oldestEntry.mills, 576);
+          const oldestTimestamp = oldestEntry.mills || oldestEntry.date;
+          const olderEntries = await fetchOlderEntries(oldestTimestamp, 576);
 
           if (olderEntries.length > 0) {
             // Add older entries to store

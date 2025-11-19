@@ -57,7 +57,7 @@ export const useBgStore = create<BgState>((set, get) => ({
 
       updates.currentBg = latest.sgv;
       updates.direction = latest.direction;
-      updates.timestamp = latest.mills;
+      updates.timestamp = latest.mills || latest.date; // Use mills or date
       updates.delta = delta;
       updates.isStale = false;
     }
@@ -78,7 +78,7 @@ export const useBgStore = create<BgState>((set, get) => ({
       updates.entries = data.entries;
       updates.currentBg = latest.sgv;
       updates.direction = latest.direction;
-      updates.timestamp = latest.mills;
+      updates.timestamp = latest.mills || latest.date; // Use mills or date
       updates.delta = delta;
       updates.isStale = false;
     }
@@ -102,7 +102,7 @@ export const useBgStore = create<BgState>((set, get) => ({
       entries: trimmedEntries,
       currentBg: entry.sgv,
       direction: entry.direction,
-      timestamp: entry.mills,
+      timestamp: entry.mills || entry.date, // Use mills or date
       delta,
       isStale: false,
     });
