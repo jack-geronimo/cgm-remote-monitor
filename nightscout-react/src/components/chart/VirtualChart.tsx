@@ -196,9 +196,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         {},
         {
           label: 'BG',
-          stroke: '#22C55E', // Default green color
-          width: 2,
-          points: { show: false },
+          stroke: '#22C55E', // Default green color for points
+          width: 0, // No connecting line
+          points: {
+            show: true,
+            size: 6,
+            fill: '#22C55E',
+          },
         },
       ],
       axes: [
@@ -219,10 +223,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           y: false,
         },
         points: {
-          show: true,  // Show point on the line
-          size: 8,
-          stroke: (u, seriesIdx) => u.series[seriesIdx].stroke as string,
-          fill: (u, seriesIdx) => '#fff',
+          show: false, // Don't show extra cursor point - data points are already visible
         },
       },
     };
