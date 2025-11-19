@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BgDisplay } from './components/bg-display/BgDisplay';
-import { Chart } from './components/chart/Chart';
+import { UPlotChart } from './components/chart/UPlotChart';
 import { Pills } from './components/pills/Pills';
 import { useSocket } from './hooks/useSocket';
 import { useBgData } from './hooks/useBgData';
@@ -82,7 +82,7 @@ function App() {
         </div>
 
         {/* Full Width Chart */}
-        <Chart />
+        <UPlotChart />
 
         {/* Footer */}
         <footer className="mt-8 text-center text-sm text-text-muted">
