@@ -57,10 +57,10 @@ export function Chart() {
   // selectedHours controls how much horizontal space each hour takes
   // More pixels per hour for shorter time ranges = more zoomed in
   const chartWidth = useMemo(() => {
-    if (chartData.length === 0) return 800;
+    if (chartData.length === 0) return 1200;
 
-    // Calculate pixels per hour based on zoom level
-    const pixelsPerHour = selectedHours <= 3 ? 400 : selectedHours <= 6 ? 250 : selectedHours <= 12 ? 150 : 100;
+    // Calculate pixels per hour based on zoom level (increased for better readability)
+    const pixelsPerHour = selectedHours <= 3 ? 600 : selectedHours <= 6 ? 400 : selectedHours <= 12 ? 250 : 150;
 
     // Calculate total time span of data in hours
     const oldestTime = chartData[0]?.time || Date.now();
@@ -71,7 +71,7 @@ export function Chart() {
     const calculatedWidth = totalHours * pixelsPerHour;
 
     // Ensure minimum width
-    return Math.max(calculatedWidth, 800);
+    return Math.max(calculatedWidth, 1200);
   }, [chartData, selectedHours]);
 
   // Auto-scroll to the right (newest data) when data updates
