@@ -60,34 +60,39 @@ export function Chart() {
     return data;
   }, [entries]);
 
-  // Calculate chart width based on selected time range (zoom level)
-  // selectedHours controls how much horizontal space each hour takes
-  // More pixels per hour for shorter time ranges = more zoomed in
-  const chartWidth = useMemo(() => {
-    if (chartData.length === 0) return 1200;
+  // Calculate chart dimensions
+  // selectedHours controls the VISIBLE viewport, not the total chart width
+  const { chartWidth, containerWidth } = useMemo(() => {
+    if (chartData.length === 0) return { chartWidth: 1200, containerWidth: 1200 };
 
-    // Calculate pixels per hour based on zoom level (increased for better readability)
-    const pixelsPerHour = selectedHours <= 3 ? 600 : selectedHours <= 6 ? 400 : selectedHours <= 12 ? 250 : 150;
+    // Fixed pixels per hour for consistent rendering (use highest zoom for quality)
+    const pixelsPerHour = 200;
 
-    // Calculate total time span of data in hours
+    // Calculate total time span of ALL data
     const oldestTime = chartData[0]?.time || Date.now();
     const newestTime = chartData[chartData.length - 1]?.time || Date.now();
     const totalHours = (newestTime - oldestTime) / (60 * 60 * 1000);
 
-    // Calculate total width needed
-    const calculatedWidth = totalHours * pixelsPerHour;
+    // Chart width = ALL data rendered
+    const totalChartWidth = Math.max(totalHours * pixelsPerHour, 1200);
 
-    // Ensure minimum width
-    return Math.max(calculatedWidth, 1200);
+    // Container width = what's VISIBLE (based on selectedHours)
+    // This creates the "viewport" effect
+    const visibleWidth = selectedHours * pixelsPerHour;
+
+    return {
+      chartWidth: totalChartWidth,
+      containerWidth: Math.min(visibleWidth, totalChartWidth),
+    };
   }, [chartData, selectedHours]);
 
-  // Calculate dynamic tick count based on zoom level
+  // Calculate dynamic tick count based on visible hours
   const xAxisTickCount = useMemo(() => {
-    // More ticks for zoomed in views, fewer for zoomed out
-    if (selectedHours <= 3) return 25; // ~every 30 min for 3h view
-    if (selectedHours <= 6) return 25; // ~every hour for 6h view
-    if (selectedHours <= 12) return 20; // ~every 1.5h for 12h view
-    return 20; // ~every 3h for 24h view
+    // Ticks based on how many hours are visible
+    if (selectedHours <= 3) return 13; // ~every 15 min
+    if (selectedHours <= 6) return 13; // ~every 30 min
+    if (selectedHours <= 12) return 13; // ~every hour
+    return 25; // ~every hour for 24h
   }, [selectedHours]);
 
   // Auto-scroll to newest data on initial load
@@ -245,12 +250,12 @@ export function Chart() {
         </div>
       </div>
 
-      {/* Scrollable chart container */}
+      {/* Scrollable chart container - width based on selected time range */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-hidden"
-        style={{ width: '100%' }}
+        className="overflow-x-auto overflow-y-hidden mx-auto"
+        style={{ width: `${containerWidth}px`, maxWidth: '100%' }}
       >
         <LineChart
           data={chartData}
