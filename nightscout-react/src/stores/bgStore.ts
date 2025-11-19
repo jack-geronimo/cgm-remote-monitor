@@ -125,7 +125,7 @@ export const useBgStore = create<BgState>((set, get) => ({
   },
 
   prependOlderEntries: (olderEntries) => {
-    const { entries } = get();
+    const { entries, viewport } = get();
 
     // Filter out duplicates and merge older entries at the end
     const existingIds = new Set(entries.map(e => e._id));
@@ -134,9 +134,23 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Append older entries to the end (since entries are sorted newest first)
     let mergedEntries = [...entries, ...uniqueOlderEntries];
 
-    // Limit to reasonable size (14 days of data = ~4000 entries at 5min intervals)
-    if (mergedEntries.length > 4000) {
-      mergedEntries = mergedEntries.slice(0, 4000);
+    // Smart trimming based on viewport
+    if (viewport && mergedEntries.length > 15000) {
+      // Keep data within ±30 days of viewport center
+      const keepWindow = 30 * 24 * 60 * 60 * 1000; // 30 days
+      const minKeepTime = viewport.center - keepWindow;
+      const maxKeepTime = viewport.center + keepWindow;
+
+      mergedEntries = mergedEntries.filter(entry => {
+        const timestamp = entry.mills || entry.date;
+        return timestamp >= minKeepTime && timestamp <= maxKeepTime;
+      });
+
+      console.log(`Trimmed entries from ${entries.length} to ${mergedEntries.length} (viewport-based)`);
+    } else if (mergedEntries.length > 20000) {
+      // Fallback: Hard limit at 20000 entries (~70 days)
+      mergedEntries = mergedEntries.slice(0, 20000);
+      console.log(`Hard trimmed entries to 20000 (oldest data removed)`);
     }
 
     set({ entries: mergedEntries });
