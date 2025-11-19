@@ -438,6 +438,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         console.log('Data point X range:', firstPointX.toFixed(1), 'to', lastPointX.toFixed(1));
         console.log('First timestamp:', new Date(data[0][0] * 1000).toLocaleTimeString());
         console.log('Last timestamp:', new Date(data[0][data[0].length - 1] * 1000).toLocaleTimeString());
+
+        // Check the actual X scale range
+        const xScale = chart.scales.x;
+        console.log('X Scale range:', xScale.min, 'to', xScale.max);
+        console.log('X Scale min as time:', new Date(xScale.min * 1000).toLocaleTimeString());
+        console.log('X Scale max as time:', new Date(xScale.max * 1000).toLocaleTimeString());
       }
 
       for (let i = 0; i < data[0].length; i++) {
