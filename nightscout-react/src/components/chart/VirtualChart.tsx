@@ -3,7 +3,7 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { useBgStore, useVisibleEntries } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { fetchOlderEntries } from '../../lib/api';
+import { fetchOlderEntries, fetchNewerEntries } from '../../lib/api';
 import { CurrentValueWindow } from './CurrentValueWindow';
 
 // Time range presets in milliseconds
@@ -31,6 +31,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const shiftViewport = useBgStore((state) => state.shiftViewport);
   const setViewportRange = useBgStore((state) => state.setViewportRange);
   const prependOlderEntries = useBgStore((state) => state.prependOlderEntries);
+  const appendNewerEntries = useBgStore((state) => state.appendNewerEntries);
 
   // Only get visible entries
   const visibleEntries = useVisibleEntries();
@@ -196,12 +197,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     if (!viewport || allEntries.length === 0) return;
 
     const delta = viewport.rangeMs * 0.5; // Move by 50% of range
-
-    // Don't go beyond newest data
-    const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
-    const newCenter = Math.min(viewport.center + delta, newestTimestamp);
-
-    shiftViewport(newCenter - viewport.center);
+    shiftViewport(delta);
+    checkAndLoadNewerData();
   };
 
   // Check if we need to load older data - PROACTIVE LOADING
@@ -244,9 +241,49 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     }
   };
 
-  // Check for data loading when viewport changes
+  // Check if we need to load newer data - PROACTIVE LOADING
+  const checkAndLoadNewerData = async () => {
+    if (isLoadingRef.current || allEntries.length === 0 || !viewport) return;
+
+    const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
+    if (!newestTimestamp) return;
+
+    // Calculate right edge of viewport
+    const viewportRightEdge = viewport.center + viewport.rangeMs / 2;
+
+    // Load more data if viewport right edge is within 1.5x range of newest data
+    const loadThreshold = viewport.rangeMs * 1.5;
+
+    if (viewportRightEdge > newestTimestamp - loadThreshold) {
+      console.log('Loading newer data...', {
+        viewportRightEdge: new Date(viewportRightEdge),
+        newestTimestamp: new Date(newestTimestamp),
+        threshold: loadThreshold / 1000 / 60 / 60 + 'h',
+      });
+
+      isLoadingRef.current = true;
+
+      try {
+        // Load 3 days worth of data (864 entries at 5min intervals)
+        const newerEntries = await fetchNewerEntries(newestTimestamp, 864);
+        if (newerEntries.length > 0) {
+          appendNewerEntries(newerEntries);
+          console.log(`Loaded ${newerEntries.length} newer entries`);
+        } else {
+          console.log('No more newer data available');
+        }
+      } catch (error) {
+        console.error('Failed to load newer entries:', error);
+      } finally {
+        isLoadingRef.current = false;
+      }
+    }
+  };
+
+  // Check for data loading when viewport changes (both directions)
   useEffect(() => {
     checkAndLoadOlderData();
+    checkAndLoadNewerData();
   }, [viewport]);
 
   // Handle window resize

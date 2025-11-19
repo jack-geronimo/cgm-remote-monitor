@@ -27,16 +27,13 @@ interface BgState {
   setData: (data: NightscoutData) => void;
   updateFromSocket: (entry: BgEntry) => void;
   prependOlderEntries: (olderEntries: BgEntry[]) => void;
+  appendNewerEntries: (newerEntries: BgEntry[]) => void;
 
   // Viewport actions
   initViewport: (center: number, rangeMs: number) => void;
   shiftViewport: (deltaMs: number) => void;
   setViewportRange: (rangeMs: number) => void;
 }
-
-// Sliding window: keep ±7 days around viewport center
-const VIEWPORT_BUFFER_DAYS = 7;
-const VIEWPORT_BUFFER_MS = VIEWPORT_BUFFER_DAYS * 24 * 60 * 60 * 1000;
 
 export const useBgStore = create<BgState>((set, get) => ({
   currentBg: null,
@@ -134,28 +131,61 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Append older entries to the end (since entries are sorted newest first)
     let mergedEntries = [...entries, ...uniqueOlderEntries];
 
-    // Smart trimming: NEVER trim future data, only old data far from viewport
+    // Symmetric sliding window: trim data far from viewport center
     if (viewport && mergedEntries.length > 15000) {
-      // Only trim data more than 60 days older than viewport center
-      // This allows scrolling back 60 days, while keeping all newer data
-      const trimThreshold = viewport.center - (60 * 24 * 60 * 60 * 1000); // 60 days before viewport
+      const keepWindow = 30 * 24 * 60 * 60 * 1000; // ±30 days
+      const minKeepTime = viewport.center - keepWindow;
+      const maxKeepTime = viewport.center + keepWindow;
 
       const beforeTrim = mergedEntries.length;
       mergedEntries = mergedEntries.filter(entry => {
         const timestamp = entry.mills || entry.date;
-        // Keep all data newer than threshold (includes all future data)
-        return timestamp >= trimThreshold;
+        return timestamp >= minKeepTime && timestamp <= maxKeepTime;
       });
 
       if (beforeTrim !== mergedEntries.length) {
-        console.log(`Trimmed entries from ${beforeTrim} to ${mergedEntries.length} (removed old data beyond 60 days from viewport)`);
+        console.log(`Trimmed entries from ${beforeTrim} to ${mergedEntries.length} (viewport-based ±30 days)`);
       }
     } else if (mergedEntries.length > 25000) {
-      // Fallback: Hard limit at 25000 entries (~87 days)
-      // But keep from newest, so slice at the end (oldest)
+      // Fallback: Hard limit - keep newest 25000
       const beforeTrim = mergedEntries.length;
       mergedEntries = mergedEntries.slice(0, 25000);
-      console.log(`Hard trimmed entries from ${beforeTrim} to 25000 (oldest data removed)`);
+      console.log(`Hard trimmed entries from ${beforeTrim} to 25000`);
+    }
+
+    set({ entries: mergedEntries });
+  },
+
+  appendNewerEntries: (newerEntries) => {
+    const { entries, viewport } = get();
+
+    // Filter out duplicates and merge newer entries at the beginning
+    const existingIds = new Set(entries.map(e => e._id));
+    const uniqueNewerEntries = newerEntries.filter(e => !existingIds.has(e._id));
+
+    // Prepend newer entries to the beginning (entries are sorted newest first)
+    let mergedEntries = [...uniqueNewerEntries, ...entries];
+
+    // Symmetric sliding window: trim data far from viewport center
+    if (viewport && mergedEntries.length > 15000) {
+      const keepWindow = 30 * 24 * 60 * 60 * 1000; // ±30 days
+      const minKeepTime = viewport.center - keepWindow;
+      const maxKeepTime = viewport.center + keepWindow;
+
+      const beforeTrim = mergedEntries.length;
+      mergedEntries = mergedEntries.filter(entry => {
+        const timestamp = entry.mills || entry.date;
+        return timestamp >= minKeepTime && timestamp <= maxKeepTime;
+      });
+
+      if (beforeTrim !== mergedEntries.length) {
+        console.log(`Trimmed entries from ${beforeTrim} to ${mergedEntries.length} (viewport-based ±30 days)`);
+      }
+    } else if (mergedEntries.length > 25000) {
+      // Fallback: Hard limit - keep newest 25000
+      const beforeTrim = mergedEntries.length;
+      mergedEntries = mergedEntries.slice(0, 25000);
+      console.log(`Hard trimmed entries from ${beforeTrim} to 25000`);
     }
 
     set({ entries: mergedEntries });

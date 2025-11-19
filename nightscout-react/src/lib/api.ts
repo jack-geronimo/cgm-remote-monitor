@@ -95,6 +95,29 @@ export async function fetchOlderEntries(beforeTimestamp: number, count: number =
 }
 
 /**
+ * Fetch newer entries after a given timestamp
+ * Used to load new data when scrolling forward (e.g., after scrolling back and time passing)
+ */
+export async function fetchNewerEntries(afterTimestamp: number, count: number = 288): Promise<BgEntry[]> {
+  try {
+    const headers = await getHeaders();
+    // Nightscout API: find[date][$gt]=timestamp filters entries after the given date
+    const url = `${API_BASE}/entries.json?find[date][$gt]=${afterTimestamp}&count=${count}`;
+    const res = await fetch(url, { headers });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch newer entries: ${res.status} ${res.statusText}`);
+    }
+
+    const entries: BgEntry[] = await res.json();
+    return entries;
+  } catch (error) {
+    console.error('Failed to fetch newer entries:', error);
+    throw error;
+  }
+}
+
+/**
  * Fetch server status
  */
 export async function fetchServerStatus() {
