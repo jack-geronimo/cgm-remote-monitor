@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-surface-0 text-text-primary;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  body.light {
+    @apply bg-light-surface-0 text-gray-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-1 rounded-2xl p-6 shadow-xl border border-surface-3;
+  }
+
+  .light .card {
+    @apply bg-light-surface-1 border-light-surface-3;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm;
+  }
+
+  .pill-urgent {
+    @apply bg-bg-urgent/20 text-bg-urgent border border-bg-urgent/30;
+  }
+
+  .pill-warning {
+    @apply bg-bg-warning/20 text-bg-warning border border-bg-warning/30;
+  }
+
+  .pill-success {
+    @apply bg-bg-success/20 text-bg-success border border-bg-success/30;
+  }
+
+  .pill-info {
+    @apply bg-bg-info/20 text-bg-info border border-bg-info/30;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
