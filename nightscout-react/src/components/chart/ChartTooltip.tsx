@@ -1,5 +1,5 @@
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatTime } from '../../lib/utils';
+import { formatTime, formatDate } from '../../lib/utils';
 
 interface ChartTooltipProps {
   value: {
@@ -45,8 +45,16 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
     };
   };
 
-  // Format time using custom formatter
+  // Format time and date using custom formatters
   const timeStr = formatTime(value.time, { timezone, locale, timeFormat });
+
+  // Format date with weekday for better context
+  const dateStr = new Date(value.time).toLocaleDateString(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: timezone,
+  });
 
   const colors = getColors(value.value);
 
@@ -80,6 +88,7 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
         <span className="text-lg font-bold">
           {value.value} <span className="text-xs font-normal">{units}</span>
         </span>
+        <span className="text-xs opacity-90">{dateStr}</span>
         <span className="text-xs opacity-90">{timeStr}</span>
       </div>
     </div>

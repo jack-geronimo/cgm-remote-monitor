@@ -234,14 +234,50 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           labelFont: '600 14px system-ui, sans-serif',
           // Custom time formatting for X-axis
           values: (_u: uPlot, vals: number[]) => {
-            return vals.map((v) => {
+            return vals.map((v, i) => {
               try {
-                return new Date(v * 1000).toLocaleTimeString(locale, {
+                const date = new Date(v * 1000);
+                const timeStr = date.toLocaleTimeString(locale, {
                   hour: '2-digit',
                   minute: '2-digit',
                   hour12: timeFormat === 12,
                   timeZone: timezone,
                 });
+
+                // Show date if:
+                // 1. It's the first label, OR
+                // 2. The date changed from the previous label, OR
+                // 3. We're viewing more than 12 hours (likely spanning multiple days)
+                let showDate = false;
+                if (i === 0) {
+                  showDate = true;
+                } else if (i > 0) {
+                  const prevDate = new Date(vals[i - 1] * 1000);
+                  const currDate = date;
+
+                  // Check if day changed
+                  const dayChanged = prevDate.getDate() !== currDate.getDate() ||
+                                    prevDate.getMonth() !== currDate.getMonth() ||
+                                    prevDate.getFullYear() !== currDate.getFullYear();
+
+                  showDate = dayChanged;
+                }
+
+                // For ranges > 12h, always show date
+                if (viewport && viewport.rangeMs > 12 * 60 * 60 * 1000) {
+                  showDate = true;
+                }
+
+                if (showDate) {
+                  const dateStr = date.toLocaleDateString(locale, {
+                    day: 'numeric',
+                    month: 'short',
+                    timeZone: timezone,
+                  });
+                  return `${dateStr}\n${timeStr}`;
+                }
+
+                return timeStr;
               } catch (error) {
                 // Fallback to default formatting
                 return new Date(v * 1000).toLocaleTimeString([], {
