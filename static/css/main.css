@@ -440,9 +440,11 @@ a, a:visited, a:link {
 }
 
 .focus-range .selected {
-  border-color: #808080;
-  color: #000;
-  background: #808080;
+  border-color: #4a90e2;
+  color: #fff;
+  background: #4a90e2;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .pill.hidden {
