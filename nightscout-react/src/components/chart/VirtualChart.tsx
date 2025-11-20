@@ -437,6 +437,36 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         return;
       }
 
+      // Calculate dynamic threshold based on average spacing between data points
+      // This ensures tooltip works at all zoom levels
+      let avgSpacing = 50; // Default fallback
+      if (data[0].length > 1) {
+        // Sample first few visible points to estimate spacing
+        const sampleSize = Math.min(10, data[0].length - 1);
+        let totalSpacing = 0;
+        let count = 0;
+
+        for (let i = 0; i < sampleSize; i++) {
+          const x1 = chart.valToPos(data[0][i], 'x');
+          const x2 = chart.valToPos(data[0][i + 1], 'x');
+          const spacing = Math.abs(x2 - x1);
+
+          // Only count visible points
+          if (x1 >= bbox.left && x1 <= bbox.left + bbox.width) {
+            totalSpacing += spacing;
+            count++;
+          }
+        }
+
+        if (count > 0) {
+          avgSpacing = totalSpacing / count;
+        }
+      }
+
+      // Use 75% of average spacing as threshold, with a reasonable minimum and maximum
+      // This allows hovering "between" data points while avoiding false positives
+      const dynamicThreshold = Math.max(30, Math.min(avgSpacing * 0.75, 150));
+
       if (shouldDebug) {
         console.log('=== CURSOR DEBUG (PIXEL-BASED) ===');
         console.log('Mouse X (px):', mouseX.toFixed(1));
@@ -447,6 +477,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         console.log('Closest data timestamp:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
         console.log('Closest data value:', data[1][closestIdx]);
         console.log('Min pixel distance:', minPixelDist.toFixed(1));
+        console.log('Average spacing:', avgSpacing.toFixed(1));
+        console.log('Dynamic threshold:', dynamicThreshold.toFixed(1));
 
         // Show neighbors with their rendered X positions
         console.log('NEIGHBORS:');
@@ -463,11 +495,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const pixelDist = minPixelDist;
 
       // Only show if:
-      // 1. We're close enough to a data point (within 50 pixels)
+      // 1. We're close enough to a data point (using dynamic threshold based on data spacing)
       // 2. The data point is actually visible within the grid (not outside viewport)
       const isWithinGrid = closestPointX >= bbox.left && closestPointX <= bbox.left + bbox.width;
 
-      if (pixelDist > 50 || !isWithinGrid) {
+      if (pixelDist > dynamicThreshold || !isWithinGrid) {
         setHoveredValue(null);
         return;
       }
