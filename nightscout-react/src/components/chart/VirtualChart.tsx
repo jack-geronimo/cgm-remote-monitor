@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, memo, useState } from 'react';
+import { useEffect, useRef, useMemo, memo, useState, useCallback } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { useBgStore, useVisibleEntries } from '../../stores/bgStore';
@@ -304,7 +304,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   };
 
   // Check if we need to load older data - PROACTIVE LOADING
-  const checkAndLoadOlderData = async () => {
+  const checkAndLoadOlderData = useCallback(async () => {
     if (isLoadingRef.current || allEntries.length === 0 || !viewport) return;
 
     const oldestTimestamp = allEntries[allEntries.length - 1]?.mills || allEntries[allEntries.length - 1]?.date;
@@ -341,10 +341,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         isLoadingRef.current = false;
       }
     }
-  };
+  }, [allEntries, viewport, prependOlderEntries]);
 
   // Check if we need to load newer data - PROACTIVE LOADING
-  const checkAndLoadNewerData = async () => {
+  const checkAndLoadNewerData = useCallback(async () => {
     if (isLoadingRef.current || allEntries.length === 0 || !viewport) return;
 
     const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
@@ -380,7 +380,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         isLoadingRef.current = false;
       }
     }
-  };
+  }, [allEntries, viewport, appendNewerEntries]);
 
   // Check for data loading when viewport changes (both directions)
   useEffect(() => {
