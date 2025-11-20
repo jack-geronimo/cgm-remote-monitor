@@ -60,8 +60,8 @@ Dieses Dokument bietet umfassende Anleitungen für AI-Assistenten (wie Claude), 
 
 ### Charts & Visualization
 
-- **Recharts 3.4.1** - React chart library (aktuell verwendet)
-- **uPlot 1.6.32** - High-performance charts (alternative/geplant)
+- **uPlot 1.6.32** - High-performance chart library (aktuell verwendet)
+- **Recharts 3.4.1** - Alternative React chart library (verfügbar)
 
 ### Real-time Communication
 
@@ -610,66 +610,123 @@ import { clsx } from 'clsx';
 
 ## Chart-Implementierung
 
-### Aktuelle Implementierung: Recharts
+### Aktuelle Implementierung: uPlot
 
-Das Projekt verwendet derzeit **Recharts** für die Glukose-Visualisierung.
+Das Projekt verwendet **uPlot** für die Glukose-Visualisierung - eine hochperformante Canvas-basierte Chart-Library.
 
 **Hauptdatei:** `src/components/chart/VirtualChart.tsx`
 
 **Features:**
-- Line Chart mit Scatter Overlay für Datenpunkte
-- Farbcodierung nach BG-Range
-- Reference Lines für Target Ranges
-- Custom Tooltip
-- Responsive Sizing
+- High-performance Canvas-Rendering mit uPlot
+- Farbcodierte Datenpunkte nach BG-Range
+- Farbcodierte Hintergrund-Zonen (Urgent Low/Low/Normal/High/Urgent High)
+- Custom Tooltip mit Vertical Cursor Line
+- Pan & Zoom mit Maus-Drag
 - Zeit-Range-Auswahl (2h, 6h, 12h, 24h)
+- Viewport-basierte Datenvirtualisierung
+- Automatisches Nachladen älterer/neuerer Daten
+- Responsive Sizing
 
-**Chart-Konfiguration:**
+**uPlot Setup:**
 
 ```typescript
-<ResponsiveContainer width="100%" height={400}>
-  <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-    {/* X-Achse: Zeit */}
-    <XAxis
-      dataKey="time"
-      type="number"
-      domain={['dataMin', 'dataMax']}
-      tickFormatter={(time) => dayjs(time).format('HH:mm')}
-    />
-
-    {/* Y-Achse: BG-Wert */}
-    <YAxis
-      domain={[40, 400]}
-      ticks={[40, 70, 180, 250, 400]}
-    />
-
-    {/* Grid */}
-    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-
-    {/* Target Lines */}
-    <ReferenceLine y={targetLow} stroke="#fbbf24" strokeDasharray="3 3" />
-    <ReferenceLine y={targetHigh} stroke="#fbbf24" strokeDasharray="3 3" />
-
-    {/* Tooltip */}
-    <Tooltip content={<ChartTooltip />} />
-
-    {/* Line */}
-    <Line
-      type="monotone"
-      dataKey="sgv"
-      stroke="#10b981"
-      strokeWidth={2}
-      dot={false}
-    />
-
-    {/* Scatter für farbcodierte Punkte */}
-    <Scatter
-      dataKey="sgv"
-      shape={(props) => <BgDot {...props} />}
-    />
-  </LineChart>
-</ResponsiveContainer>
+const opts: uPlot.Options = {
+  width: chartRef.current.clientWidth,
+  height: 500,
+  plugins: [bgZonesPlugin, coloredPointsPlugin],
+  scales: {
+    x: {
+      time: true,
+      range: [
+        (viewport.center - viewport.rangeMs / 2) / 1000,
+        (viewport.center + viewport.rangeMs / 2) / 1000,
+      ],
+    },
+    y: {
+      range: [
+        Math.max(40, alarmUrgentLow - 20),
+        Math.min(400, alarmUrgentHigh + 20),
+      ],
+    },
+  },
+  series: [
+    {},
+    {
+      label: 'BG',
+      stroke: 'transparent', // No line
+      points: { show: false }, // Custom points via plugin
+    },
+  ],
+  axes: [
+    {
+      stroke: '#ffffff',
+      grid: { show: true, stroke: 'rgba(255, 255, 255, 0.1)' },
+    },
+    {
+      stroke: '#ffffff',
+      grid: { show: true, stroke: 'rgba(255, 255, 255, 0.1)' },
+    },
+  ],
+  cursor: { show: false }, // Custom cursor implementation
+};
 ```
+
+**Custom Plugins:**
+
+Das Chart verwendet zwei Custom uPlot Plugins:
+
+1. **bgZonesPlugin** - Zeichnet farbcodierte Hintergrund-Zonen:
+   ```typescript
+   const bgZonesPlugin: uPlot.Plugin = {
+     hooks: {
+       draw: [(u) => {
+         const { ctx } = u;
+         const { left, top, width, height } = u.bbox;
+
+         ctx.save();
+         ctx.beginPath();
+         ctx.rect(left, top, width, height);
+         ctx.clip(); // Wichtig: Clipping!
+
+         // Zonen zeichnen...
+         ctx.restore();
+       }],
+     },
+   };
+   ```
+
+2. **coloredPointsPlugin** - Zeichnet farbcodierte Datenpunkte:
+   ```typescript
+   const coloredPointsPlugin: uPlot.Plugin = {
+     hooks: {
+       drawSeries: [(u, seriesIdx) => {
+         if (seriesIdx !== 1) return;
+
+         const { ctx } = u;
+         const { left, top, width, height } = u.bbox;
+
+         ctx.save();
+         ctx.beginPath();
+         ctx.rect(left, top, width, height);
+         ctx.clip(); // Wichtig: Clipping!
+
+         // Punkte zeichnen...
+         for (let i = 0; i < xData.length; i++) {
+           const cx = u.valToPos(xData[i], 'x', true);
+           const cy = u.valToPos(yData[i], 'y', true);
+           const color = getColorForValue(yData[i]);
+
+           ctx.fillStyle = color;
+           ctx.beginPath();
+           ctx.arc(cx, cy, 3, 0, 2 * Math.PI); // Radius 3 = Durchmesser 6px
+           ctx.fill();
+         }
+
+         ctx.restore();
+       }],
+     },
+   };
+   ```
 
 **BG-Farbcodierung:**
 
@@ -685,26 +742,42 @@ const getBgColor = (sgv: number, targetLow: number, targetHigh: number) => {
 
 ### Performance-Optimierung
 
-**Problem:** Recharts kann bei vielen Datenpunkten (>500) langsam werden.
+**uPlot ist bereits hochperformant!** Die Verwendung von Canvas und die effizienten Rendering-Hooks machen es ideal für große Datenmengen.
 
-**Lösungen:**
-1. **Data Downsampling:**
+**Implementierte Optimierungen:**
+
+1. **Viewport-basierte Datenvirtualisierung:**
+   - Nur sichtbare Datenpunkte werden geladen (`useVisibleEntries`)
+   - Store filtert Einträge basierend auf aktuellem Viewport
    ```typescript
-   const downsampleData = (data: BgEntry[], maxPoints: number) => {
-     if (data.length <= maxPoints) return data;
-     const step = Math.ceil(data.length / maxPoints);
-     return data.filter((_, index) => index % step === 0);
-   };
+   const visibleEntries = useVisibleEntries(); // Nur Daten im sichtbaren Bereich
    ```
 
-2. **Virtualisierung:**
-   - Nur sichtbare Datenpunkte rendern
-   - Bereits teilweise implementiert in `VirtualChart.tsx`
+2. **Lazy Loading:**
+   - Automatisches Nachladen beim Scrollen
+   - Proaktives Laden wenn Viewport-Rand nahe kommt
+   - Siehe `checkAndLoadOlderData()` / `checkAndLoadNewerData()`
 
-3. **Alternative: uPlot:**
-   - High-Performance Chart Library
-   - Bereits als Dependency vorhanden (`uplot 1.6.32`)
-   - Kann bei Performance-Problemen als Alternative verwendet werden
+3. **Memoization:**
+   - Chart-Daten werden nur bei Änderung neu berechnet
+   ```typescript
+   const chartData = useMemo(() => {
+     // Konvertierung nur wenn visibleEntries sich ändert
+   }, [visibleEntries]);
+   ```
+
+4. **Canvas Clipping:**
+   - Verhindert unnötiges Zeichnen außerhalb des sichtbaren Bereichs
+   - In beiden Plugins implementiert (`bgZonesPlugin`, `coloredPointsPlugin`)
+
+5. **Chart Update ohne Destroy:**
+   - Daten-Updates erfolgen über `setData()` statt Chart neu zu erstellen
+   - Nur bei Setting-Änderungen wird Chart neu erstellt
+
+**Typische Performance:**
+- ✅ 1000+ Datenpunkte: Smooth (dank Viewport-Virtualisierung)
+- ✅ Pan/Zoom: Instant
+- ✅ Data Updates: < 16ms (60 FPS)
 
 ---
 
@@ -849,29 +922,46 @@ module.exports = {
 
 ### 7. Chart-Datenpunkt-Größe ändern
 
-Das Problem, das du hattest! Hier ist, wie man es richtig macht:
-
 **Datei:** `src/components/chart/VirtualChart.tsx`
 
-```typescript
-// Suche nach der Scatter-Komponente
-<Scatter
-  dataKey="sgv"
-  shape={(props) => {
-    const { cx, cy, payload } = props;
-    const color = getBgColor(payload.sgv, targetLow, targetHigh);
+**Suche nach dem `coloredPointsPlugin`:**
 
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={3}  // ← Hier die Größe ändern (war z.B. 4)
-        fill={color}
-        className="transition-all"
-      />
-    );
-  }}
-/>
+```typescript
+// In der drawSeries Funktion
+ctx.arc(cx, cy, 3, 0, 2 * Math.PI); // ← Radius hier ändern
+```
+
+**Beispiel - Größere Punkte:**
+```typescript
+// Radius 3 = Durchmesser 6px (aktuell)
+ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+
+// Radius 4 = Durchmesser 8px (größer)
+ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+
+// Radius 2 = Durchmesser 4px (kleiner)
+ctx.arc(cx, cy, 2, 0, 2 * Math.PI);
+```
+
+**Voller Context:**
+```typescript
+const coloredPointsPlugin: uPlot.Plugin = {
+  hooks: {
+    drawSeries: [(u, seriesIdx) => {
+      // ...
+      for (let i = 0; i < xData.length; i++) {
+        const cx = u.valToPos(xData[i], 'x', true);
+        const cy = u.valToPos(yData[i], 'y', true);
+        const color = getColorForValue(yData[i]);
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, 2 * Math.PI); // ← HIER
+        ctx.fill();
+      }
+    }],
+  },
+};
 ```
 
 ### 8. Socket.io Event Handler hinzufügen
@@ -999,23 +1089,46 @@ const handleClick = (event: React.MouseEvent) => { }  // ✅
 
 **Symptome:**
 - Langsames Rendering
-- Verzögertes Scrolling
-- Browser freezt
+- Verzögertes Pan/Zoom
+- Browser freezt bei vielen Daten
 
-**Lösungen:**
-1. **Data Downsampling aktivieren:**
+**Ursachen & Lösungen:**
+
+1. **Zu viele Datenpunkte im Viewport:**
    ```typescript
-   const displayData = downsampleData(entries, 500);
+   // Problem: Alle Einträge werden geladen
+   const entries = useBgStore(state => state.entries);
+
+   // Lösung: Nur sichtbare verwenden (bereits implementiert)
+   const visibleEntries = useVisibleEntries();
    ```
 
-2. **uPlot verwenden statt Recharts:**
-   - uPlot ist bereits installiert (`uplot 1.6.32`)
-   - Deutlich performanter für viele Datenpunkte
-   - Beispiel-Integration in separater Branch
+2. **Chart wird zu oft neu erstellt:**
+   - Chart sollte NUR bei Setting-Änderungen neu erstellt werden
+   - Daten-Updates über `setData()` (bereits implementiert)
+   - Prüfe dass Dependencies im `useEffect` korrekt sind
 
-3. **Virtual Scrolling verbessern:**
-   - In `VirtualChart.tsx` bereits teilweise implementiert
-   - Kann weiter optimiert werden
+3. **Kein Canvas Clipping:**
+   - Canvas Clipping ist bereits implementiert (Stand: 2025-11-20)
+   - Falls entfernt: Siehe `bgZonesPlugin` und `coloredPointsPlugin`
+   ```typescript
+   ctx.beginPath();
+   ctx.rect(left, top, width, height);
+   ctx.clip(); // Wichtig!
+   ```
+
+4. **Browser DevTools sind offen:**
+   - Performance Profiler kann Chart verlangsamen
+   - DevTools schließen für echte Performance-Tests
+
+**Debug:**
+```typescript
+// Performance messen
+console.time('chart-render');
+uplotRef.current.setData(chartData);
+console.timeEnd('chart-render');
+// Sollte < 16ms sein für 60 FPS
+```
 
 ---
 

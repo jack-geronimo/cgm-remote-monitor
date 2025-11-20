@@ -137,6 +137,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
             ctx.save();
 
+            // Clip to the chart's bbox to prevent drawing outside the chart area
+            ctx.beginPath();
+            ctx.rect(left, top, width, height);
+            ctx.clip();
+
             // Helper to convert Y value to pixel position
             const yToPixel = (val: number) => {
               const scale = u.scales.y;
@@ -219,6 +224,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
             if (!xData || !yData) return;
 
             ctx.save();
+
+            // Clip to the chart's bbox to prevent drawing outside the chart area
+            const { left, top, width, height } = u.bbox;
+            ctx.beginPath();
+            ctx.rect(left, top, width, height);
+            ctx.clip();
 
             // Draw each point with its color
             for (let i = 0; i < xData.length; i++) {
