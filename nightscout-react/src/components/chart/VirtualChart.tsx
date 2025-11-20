@@ -759,7 +759,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
               onClick={() => handleZoomChange(range)}
               className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
                 viewport.rangeMs === TIME_RANGES[range]
-                  ? 'bg-bg-info text-white shadow-lg shadow-bg-info/50 scale-105 border-2 border-bg-info'
+                  ? 'bg-bg-info text-white scale-105 border-2 border-bg-info'
                   : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3'
               }`}
             >
