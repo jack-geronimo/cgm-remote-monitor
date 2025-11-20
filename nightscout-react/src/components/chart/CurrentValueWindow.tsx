@@ -1,5 +1,6 @@
 import { useBgStore } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { formatTime } from '../../lib/utils';
 
 export function CurrentValueWindow() {
   const currentBg = useBgStore((state) => state.currentBg);
@@ -7,6 +8,9 @@ export function CurrentValueWindow() {
   const delta = useBgStore((state) => state.delta);
   const timestamp = useBgStore((state) => state.timestamp);
   const units = useSettingsStore((state) => state.units);
+  const timezone = useSettingsStore((state) => state.timezone);
+  const locale = useSettingsStore((state) => state.locale);
+  const timeFormat = useSettingsStore((state) => state.timeFormat);
 
   if (!currentBg || !timestamp) {
     return null;
@@ -48,7 +52,7 @@ export function CurrentValueWindow() {
       <div className="flex items-center justify-between mb-1 pb-1 border-b border-surface-3">
         <span className="text-xs font-medium text-text-secondary">Current</span>
         <span className="text-xs text-text-muted">
-          {new Date(timestamp).toLocaleTimeString()}
+          {formatTime(timestamp, { timezone, locale, timeFormat })}
         </span>
       </div>
 

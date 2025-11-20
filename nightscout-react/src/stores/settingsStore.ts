@@ -11,6 +11,12 @@ interface SettingsState {
   // Time Format
   timeFormat: 12 | 24;
 
+  // Timezone
+  timezone: string;
+
+  // Locale for date/time formatting
+  locale: string;
+
   // Alarm Thresholds (in mg/dL)
   alarmUrgentHigh: number;
   alarmHigh: number;
@@ -26,6 +32,8 @@ interface SettingsState {
   setUnits: (units: 'mg/dl' | 'mmol') => void;
   setTheme: (theme: 'dark' | 'light' | 'auto') => void;
   setTimeFormat: (format: 12 | 24) => void;
+  setTimezone: (timezone: string) => void;
+  setLocale: (locale: string) => void;
   setAlarmThresholds: (thresholds: Partial<Pick<SettingsState, 'alarmUrgentHigh' | 'alarmHigh' | 'targetTop' | 'targetBottom' | 'alarmLow' | 'alarmUrgentLow'>>) => void;
   setLanguage: (language: string) => void;
 }
@@ -36,7 +44,9 @@ export const useSettingsStore = create<SettingsState>()(
       // Defaults matching original Nightscout
       units: 'mg/dl',
       theme: 'dark',
-      timeFormat: 12,
+      timeFormat: 24,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Auto-detect system timezone
+      locale: navigator.language || 'en-US', // Auto-detect browser locale
       alarmUrgentHigh: 260,
       alarmHigh: 180,
       targetTop: 180,
@@ -68,6 +78,10 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       setTimeFormat: (timeFormat) => set({ timeFormat }),
+
+      setTimezone: (timezone) => set({ timezone }),
+
+      setLocale: (locale) => set({ locale }),
 
       setAlarmThresholds: (thresholds) => set((state) => ({
         ...state,

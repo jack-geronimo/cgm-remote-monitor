@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../../stores/settingsStore';
+import { formatTime } from '../../lib/utils';
 
 interface ChartTooltipProps {
   value: {
@@ -13,6 +14,9 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
   if (!value) return null;
 
   const units = useSettingsStore((state) => state.units);
+  const timezone = useSettingsStore((state) => state.timezone);
+  const locale = useSettingsStore((state) => state.locale);
+  const timeFormat = useSettingsStore((state) => state.timeFormat);
   const alarmUrgentHigh = useSettingsStore.getState().alarmUrgentHigh;
   const alarmHigh = useSettingsStore.getState().alarmHigh;
   const alarmLow = useSettingsStore.getState().alarmLow;
@@ -41,11 +45,8 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
     };
   };
 
-  // Format time
-  const timeStr = new Date(value.time).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  // Format time using custom formatter
+  const timeStr = formatTime(value.time, { timezone, locale, timeFormat });
 
   const colors = getColors(value.value);
 

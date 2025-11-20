@@ -79,3 +79,112 @@ export function formatBgValue(bg: number | null | undefined, units: 'mg/dl' | 'm
 
   return Math.round(bg).toString();
 }
+
+/**
+ * Format time with timezone and locale support
+ */
+export function formatTime(
+  timestamp: number,
+  options: {
+    timezone?: string;
+    locale?: string;
+    timeFormat?: 12 | 24;
+  } = {}
+): string {
+  const {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale = 'en-US',
+    timeFormat = 24,
+  } = options;
+
+  try {
+    return new Date(timestamp).toLocaleTimeString(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: timeFormat === 12,
+      timeZone: timezone,
+    });
+  } catch (error) {
+    console.error('Error formatting time:', error);
+    // Fallback to default formatting
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: timeFormat === 12,
+    });
+  }
+}
+
+/**
+ * Format date with timezone and locale support
+ */
+export function formatDate(
+  timestamp: number,
+  options: {
+    timezone?: string;
+    locale?: string;
+  } = {}
+): string {
+  const {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale = 'en-US',
+  } = options;
+
+  try {
+    return new Date(timestamp).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: timezone,
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    // Fallback to default formatting
+    return new Date(timestamp).toLocaleDateString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+}
+
+/**
+ * Format datetime with timezone and locale support
+ */
+export function formatDateTime(
+  timestamp: number,
+  options: {
+    timezone?: string;
+    locale?: string;
+    timeFormat?: 12 | 24;
+  } = {}
+): string {
+  const {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale = 'en-US',
+    timeFormat = 24,
+  } = options;
+
+  try {
+    return new Date(timestamp).toLocaleString(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: timeFormat === 12,
+      timeZone: timezone,
+    });
+  } catch (error) {
+    console.error('Error formatting datetime:', error);
+    // Fallback to default formatting
+    return new Date(timestamp).toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: timeFormat === 12,
+    });
+  }
+}

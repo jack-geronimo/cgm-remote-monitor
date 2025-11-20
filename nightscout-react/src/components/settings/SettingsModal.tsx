@@ -1,10 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Common timezones
+const COMMON_TIMEZONES = [
+  'Europe/Berlin',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Vienna',
+  'Europe/Zurich',
+  'America/New_York',
+  'America/Chicago',
+  'America/Los_Angeles',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+  'UTC',
+];
+
+// Common locales
+const COMMON_LOCALES = [
+  { value: 'de-DE', label: 'Deutsch (Deutschland)' },
+  { value: 'de-AT', label: 'Deutsch (Österreich)' },
+  { value: 'de-CH', label: 'Deutsch (Schweiz)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'fr-FR', label: 'Français' },
+  { value: 'es-ES', label: 'Español' },
+  { value: 'it-IT', label: 'Italiano' },
+];
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const settings = useSettingsStore();
@@ -16,6 +43,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [targetBottom, setTargetBottom] = useState(settings.targetBottom);
   const [alarmLow, setAlarmLow] = useState(settings.alarmLow);
   const [alarmUrgentLow, setAlarmUrgentLow] = useState(settings.alarmUrgentLow);
+  const [timeFormat, setTimeFormat] = useState(settings.timeFormat);
+  const [timezone, setTimezone] = useState(settings.timezone);
+  const [locale, setLocale] = useState(settings.locale);
+
+  // Sync local state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setAlarmUrgentHigh(settings.alarmUrgentHigh);
+      setAlarmHigh(settings.alarmHigh);
+      setTargetTop(settings.targetTop);
+      setTargetBottom(settings.targetBottom);
+      setAlarmLow(settings.alarmLow);
+      setAlarmUrgentLow(settings.alarmUrgentLow);
+      setTimeFormat(settings.timeFormat);
+      setTimezone(settings.timezone);
+      setLocale(settings.locale);
+    }
+  }, [isOpen, settings]);
 
   const handleSave = () => {
     settings.setAlarmThresholds({
@@ -26,6 +71,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       alarmLow,
       alarmUrgentLow,
     });
+    settings.setTimeFormat(timeFormat);
+    settings.setTimezone(timezone);
+    settings.setLocale(locale);
     onClose();
   };
 
@@ -37,6 +85,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setTargetBottom(80);
     setAlarmLow(55);
     setAlarmUrgentLow(55);
+    setTimeFormat(24);
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    setLocale(navigator.language || 'en-US');
   };
 
   if (!isOpen) return null;
@@ -59,6 +110,73 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Time & Date Settings Section */}
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Time & Date Settings</h3>
+            <div className="space-y-4">
+              {/* Time Format */}
+              <div className="flex items-center justify-between">
+                <label className="text-text-primary font-medium">Time Format</label>
+                <select
+                  value={timeFormat}
+                  onChange={(e) => setTimeFormat(Number(e.target.value) as 12 | 24)}
+                  className="px-3 py-2 bg-surface-2 border border-surface-3 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bg-info"
+                >
+                  <option value={12}>12-hour (AM/PM)</option>
+                  <option value={24}>24-hour</option>
+                </select>
+              </div>
+
+              {/* Timezone */}
+              <div className="flex items-center justify-between">
+                <label className="text-text-primary font-medium">Timezone</label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="px-3 py-2 bg-surface-2 border border-surface-3 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bg-info"
+                >
+                  {COMMON_TIMEZONES.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Locale */}
+              <div className="flex items-center justify-between">
+                <label className="text-text-primary font-medium">Language/Region</label>
+                <select
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value)}
+                  className="px-3 py-2 bg-surface-2 border border-surface-3 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bg-info"
+                >
+                  {COMMON_LOCALES.map((loc) => (
+                    <option key={loc.value} value={loc.value}>
+                      {loc.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Preview */}
+              <div className="mt-4 p-3 bg-surface-2 rounded-lg">
+                <p className="text-sm text-text-secondary mb-1">Preview:</p>
+                <p className="text-text-primary">
+                  {new Date().toLocaleString(locale, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: timeFormat === 12,
+                    timeZone: timezone,
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Alarm Thresholds Section */}
           <div>
             <h3 className="text-lg font-semibold text-text-primary mb-4">Alarm Thresholds (mg/dL)</h3>

@@ -61,6 +61,9 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const alarmUrgentLow = useSettingsStore((state) => state.alarmUrgentLow);
   const alarmHigh = useSettingsStore((state) => state.alarmHigh);
   const alarmLow = useSettingsStore((state) => state.alarmLow);
+  const timezone = useSettingsStore((state) => state.timezone);
+  const locale = useSettingsStore((state) => state.locale);
+  const timeFormat = useSettingsStore((state) => state.timeFormat);
 
   // Initialize viewport on mount - START WITH NEWEST DATA FROM DB
   useEffect(() => {
@@ -229,6 +232,26 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           ticks: { stroke: '#ffffff', width: 2 },
           font: '600 14px system-ui, sans-serif',
           labelFont: '600 14px system-ui, sans-serif',
+          // Custom time formatting for X-axis
+          values: (_u: uPlot, vals: number[]) => {
+            return vals.map((v) => {
+              try {
+                return new Date(v * 1000).toLocaleTimeString(locale, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: timeFormat === 12,
+                  timeZone: timezone,
+                });
+              } catch (error) {
+                // Fallback to default formatting
+                return new Date(v * 1000).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: timeFormat === 12,
+                });
+              }
+            });
+          },
         },
         {
           stroke: '#ffffff',
@@ -243,7 +266,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       },
     };
 
-    const chart = new uPlot(opts, chartData, chartRef.current);
+    const chart = new uPlot(opts, chartData as uPlot.AlignedData, chartRef.current);
     uplotRef.current = chart;
 
     // Cleanup on unmount
@@ -253,14 +276,14 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         uplotRef.current = null;
       }
     };
-  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData]); // Create only when viewport initialized
+  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData, timezone, locale, timeFormat]); // Create only when viewport initialized or settings change
 
   // Update chart data when visibleEntries change - NO DESTROY/CREATE!
   useEffect(() => {
     if (!uplotRef.current) return;
 
     // Update data without destroying chart
-    uplotRef.current.setData(chartData);
+    uplotRef.current.setData(chartData as uPlot.AlignedData);
   }, [chartData]);
 
   // Update X-axis range when viewport changes
