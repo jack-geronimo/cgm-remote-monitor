@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BgDisplay } from './components/bg-display/BgDisplay';
 import { VirtualChart } from './components/chart/VirtualChart';
 import { Pills } from './components/pills/Pills';
+import { SettingsModal } from './components/settings/SettingsModal';
 import { useSocket } from './hooks/useSocket';
 import { useBgData } from './hooks/useBgData';
 import { useSettingsStore } from './stores/settingsStore';
@@ -12,6 +13,9 @@ function App() {
 
   // Load initial data
   useBgData();
+
+  // Settings modal state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Theme management
   const theme = useSettingsStore((state) => state.theme);
@@ -40,8 +44,9 @@ function App() {
               </p>
             </div>
 
-            {/* Settings button - placeholder for future settings panel */}
+            {/* Settings button */}
             <button
+              onClick={() => setIsSettingsOpen(true)}
               className="p-2 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors"
               aria-label="Settings"
             >
@@ -91,6 +96,9 @@ function App() {
           </p>
         </footer>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

@@ -94,12 +94,15 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     return [timestamps, values];
   }, [visibleEntries]);
 
-  // Create chart ONCE
+  // Create chart - recreate when alarm thresholds change
   useEffect(() => {
     if (!chartRef.current || !viewport) return;
 
-    // Don't create if already exists
-    if (uplotRef.current) return;
+    // Destroy existing chart if thresholds changed
+    if (uplotRef.current) {
+      uplotRef.current.destroy();
+      uplotRef.current = null;
+    }
 
     // Plugin to draw colored BG zones
     const bgZonesPlugin: uPlot.Plugin = {
