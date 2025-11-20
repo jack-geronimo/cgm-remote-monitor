@@ -214,10 +214,18 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       ],
       axes: [
         {
+          stroke: '#ffffff',
           grid: { show: true, stroke: 'rgba(255, 255, 255, 0.1)' },
+          ticks: { stroke: '#ffffff', width: 2 },
+          font: '600 14px system-ui, sans-serif',
+          labelFont: '600 14px system-ui, sans-serif',
         },
         {
+          stroke: '#ffffff',
           grid: { show: true, stroke: 'rgba(255, 255, 255, 0.1)' },
+          ticks: { stroke: '#ffffff', width: 2 },
+          font: '600 14px system-ui, sans-serif',
+          labelFont: '600 14px system-ui, sans-serif',
         },
       ],
       cursor: {
