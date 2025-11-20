@@ -234,10 +234,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
               // Get color based on value
               const color = getColorForValue(yVal);
 
-              // Draw point
+              // Draw point (radius 3 for size 6)
               ctx.fillStyle = color;
               ctx.beginPath();
-              ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+              ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
               ctx.fill();
             }
 
