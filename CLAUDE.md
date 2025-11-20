@@ -8,6 +8,23 @@ This document provides comprehensive guidance for AI assistants (like Claude) wo
 
 ---
 
+# ⚠️ KRITISCHE WARNUNG FÜR AI-ASSISTENTEN ⚠️
+
+## **NIEMALS Änderungen im `/lib/` Verzeichnis vornehmen!**
+
+### **NUR im `/nightscout-react/` Verzeichnis arbeiten!**
+
+**Wichtige Informationen:**
+
+- **`/lib/` Verzeichnis** = Altes Node.js/jQuery Frontend (Legacy Code) - **NICHT BEARBEITEN!**
+- **`/nightscout-react/` Verzeichnis** = Neues React/TypeScript Frontend - **HIER ARBEITEN!**
+
+**Alle Frontend-Änderungen, Chart-Anpassungen, UI-Verbesserungen müssen ausschließlich in `/nightscout-react/` erfolgen!**
+
+**Für detaillierte Anweisungen zum React-Frontend siehe: `/nightscout-react/CLAUDE.md`**
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
