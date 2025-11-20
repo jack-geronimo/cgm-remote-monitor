@@ -304,7 +304,7 @@ export function Chart() {
       {/* Chart area with fixed Y-axis */}
       <div className="flex">
         {/* Fixed Y-axis on the left */}
-        <div className="flex-shrink-0" style={{ width: '60px' }}>
+        <div className="flex-shrink-0" style={{ width: '60px', backgroundColor: 'rgba(0, 0, 0, 0.6)', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
           <svg width="60" height="400">
             {/* Background for better readability */}
             <rect
@@ -312,7 +312,7 @@ export function Chart() {
               y="0"
               width="60"
               height="400"
-              fill="rgba(0, 0, 0, 0.3)"
+              fill="rgba(0, 0, 0, 0.6)"
             />
             <g transform="translate(0, 10)">
               {/* Y-axis labels */}
@@ -338,7 +338,7 @@ export function Chart() {
                           y1={y}
                           x2="60"
                           y2={y}
-                          stroke="rgba(255,255,255,0.9)"
+                          stroke="#ffffff"
                           strokeWidth="1"
                         />
                         <text
@@ -346,9 +346,9 @@ export function Chart() {
                           y={y}
                           textAnchor="end"
                           dominantBaseline="middle"
-                          fill="rgba(255,255,255,0.95)"
-                          fontSize="12"
-                          fontWeight="500"
+                          fill="#ffffff"
+                          fontSize="13"
+                          fontWeight="600"
                         >
                           {formatBgValue(Math.round(value), units)}
                         </text>
@@ -433,9 +433,9 @@ export function Chart() {
               // Show date + time for better context
               return date.format('DD.MM HH:mm');
             }}
-            stroke="rgba(255,255,255,0.9)"
-            tick={{ fill: 'rgba(255,255,255,0.95)', fontWeight: 500 }}
-            style={{ fontSize: '11px' }}
+            stroke="#ffffff"
+            tick={{ fill: '#ffffff', fontWeight: 600 }}
+            style={{ fontSize: '12px' }}
             height={50}
           />
 

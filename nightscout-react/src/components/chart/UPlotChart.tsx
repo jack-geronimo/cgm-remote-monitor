@@ -122,15 +122,15 @@ export function UPlotChart() {
       ],
       axes: [
         {
-          stroke: 'rgba(255,255,255,0.9)',
+          stroke: '#ffffff',
           grid: { stroke: 'rgba(255,255,255,0.1)' },
-          ticks: { stroke: 'rgba(255,255,255,0.9)' },
-          font: '12px system-ui, sans-serif',
-          labelFont: '500 12px system-ui, sans-serif',
+          ticks: { stroke: '#ffffff' },
+          font: '600 13px system-ui, sans-serif',
+          labelFont: '600 13px system-ui, sans-serif',
         },
         {
           show: false, // Hide Y-axis since we have a separate fixed axis
-          stroke: 'rgba(255,255,255,0.9)',
+          stroke: '#ffffff',
           grid: { stroke: 'rgba(255,255,255,0.1)' },
         },
       ],
@@ -378,7 +378,7 @@ export function UPlotChart() {
       {/* Chart with fixed Y-axis */}
       <div className="flex gap-0">
         {/* Fixed Y-axis */}
-        <div className="flex-shrink-0" style={{ width: '50px', height: `${chartHeight}px` }}>
+        <div className="flex-shrink-0" style={{ width: '50px', height: `${chartHeight}px`, backgroundColor: 'rgba(0, 0, 0, 0.6)', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
           <svg width="50" height={chartHeight} className="overflow-visible">
             {/* Background for better readability */}
             <rect
@@ -386,7 +386,7 @@ export function UPlotChart() {
               y="0"
               width="50"
               height={chartHeight}
-              fill="rgba(0, 0, 0, 0.3)"
+              fill="rgba(0, 0, 0, 0.6)"
             />
 
             {/* Y-axis line */}
@@ -395,7 +395,7 @@ export function UPlotChart() {
               y1="0"
               x2="45"
               y2={chartHeight}
-              stroke="rgba(255,255,255,0.9)"
+              stroke="#ffffff"
               strokeWidth="1"
             />
 
@@ -413,9 +413,9 @@ export function UPlotChart() {
                     x="40"
                     y={yPos + 4}
                     textAnchor="end"
-                    fill="rgba(255,255,255,0.95)"
-                    fontSize="12"
-                    fontWeight="500"
+                    fill="#ffffff"
+                    fontSize="13"
+                    fontWeight="600"
                   >
                     {value}
                   </text>
@@ -425,7 +425,7 @@ export function UPlotChart() {
                     y1={yPos}
                     x2="45"
                     y2={yPos}
-                    stroke="rgba(255,255,255,0.9)"
+                    stroke="#ffffff"
                     strokeWidth="1"
                   />
                 </g>
