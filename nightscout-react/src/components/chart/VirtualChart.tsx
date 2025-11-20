@@ -246,8 +246,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
                 // Show date if:
                 // 1. It's the first label, OR
-                // 2. The date changed from the previous label, OR
-                // 3. We're viewing more than 12 hours (likely spanning multiple days)
+                // 2. The date changed from the previous label
                 let showDate = false;
                 if (i === 0) {
                   showDate = true;
@@ -261,11 +260,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
                                     prevDate.getFullYear() !== currDate.getFullYear();
 
                   showDate = dayChanged;
-                }
-
-                // For ranges > 12h, always show date
-                if (viewport && viewport.rangeMs > 12 * 60 * 60 * 1000) {
-                  showDate = true;
                 }
 
                 if (showDate) {
