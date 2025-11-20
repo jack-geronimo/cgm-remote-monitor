@@ -106,6 +106,48 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     return [timestamps, values];
   }, [visibleEntries]);
 
+  // Calculate dynamic Y-axis range (Hybrid approach) - MEMOIZED
+  const yAxisRange = useMemo((): [number, number] => {
+    // Default range based on alarm thresholds
+    const defaultMin = Math.max(40, alarmUrgentLow - 20);
+    const defaultMax = Math.min(400, alarmUrgentHigh + 20);
+
+    // If no data, use default
+    if (chartData[1].length === 0) {
+      return [defaultMin, defaultMax];
+    }
+
+    // Find min/max of visible data
+    const dataValues = chartData[1];
+    const dataMin = Math.min(...dataValues);
+    const dataMax = Math.max(...dataValues);
+
+    // Calculate dynamic range with padding (10% of data range or minimum 20 mg/dL)
+    const dataRange = dataMax - dataMin;
+    const padding = Math.max(dataRange * 0.1, 20);
+
+    let minY = dataMin - padding;
+    let maxY = dataMax + padding;
+
+    // Ensure alarm thresholds are always visible
+    minY = Math.min(minY, alarmUrgentLow - 10);
+    maxY = Math.max(maxY, alarmUrgentHigh + 10);
+
+    // Apply absolute bounds (40-400 mg/dL)
+    minY = Math.max(40, minY);
+    maxY = Math.min(400, maxY);
+
+    // Ensure minimum range of 60 mg/dL for readability
+    const finalRange = maxY - minY;
+    if (finalRange < 60) {
+      const expansion = (60 - finalRange) / 2;
+      minY = Math.max(40, minY - expansion);
+      maxY = Math.min(400, maxY + expansion);
+    }
+
+    return [Math.round(minY), Math.round(maxY)];
+  }, [chartData, alarmUrgentHigh, alarmUrgentLow]);
+
   // Create chart - recreate when alarm thresholds change
   useEffect(() => {
     if (!chartRef.current || !viewport) return;
@@ -272,10 +314,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           ],
         },
         y: {
-          range: [
-            Math.max(40, alarmUrgentLow - 20),
-            Math.min(400, alarmUrgentHigh + 20),
-          ],
+          range: yAxisRange, // Use dynamic hybrid range
         },
       },
       series: [
@@ -389,6 +428,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
     uplotRef.current.setScale('x', { min: minX, max: maxX });
   }, [viewport]);
+
+  // Update Y-axis range when yAxisRange changes (hybrid dynamic scaling)
+  useEffect(() => {
+    if (!uplotRef.current) return;
+
+    uplotRef.current.setScale('y', { min: yAxisRange[0], max: yAxisRange[1] });
+  }, [yAxisRange]);
 
   // Handle zoom change
   const handleZoomChange = (range: keyof typeof TIME_RANGES) => {
