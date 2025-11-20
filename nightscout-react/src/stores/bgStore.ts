@@ -32,6 +32,7 @@ interface BgState {
   // Viewport actions
   initViewport: (center: number, rangeMs: number) => void;
   shiftViewport: (deltaMs: number) => void;
+  setViewportCenter: (center: number) => void;
   setViewportRange: (rangeMs: number) => void;
 }
 
@@ -205,6 +206,19 @@ export const useBgStore = create<BgState>((set, get) => ({
       viewport: {
         ...viewport,
         center: viewport.center + deltaMs,
+      },
+    });
+  },
+
+  // Set viewport center directly (for dragging)
+  setViewportCenter: (center) => {
+    const { viewport } = get();
+    if (!viewport) return;
+
+    set({
+      viewport: {
+        ...viewport,
+        center,
       },
     });
   },

@@ -24,6 +24,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const chartRef = useRef<HTMLDivElement>(null);
   const uplotRef = useRef<uPlot | null>(null);
   const isLoadingRef = useRef(false);
+
+  // Drag state in refs to persist across renders
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartTimeRef = useRef(0);
+
   const [hoveredValue, setHoveredValue] = useState<{
     time: number;
     value: number;
@@ -42,6 +48,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const viewport = useBgStore((state) => state.viewport);
   const initViewport = useBgStore((state) => state.initViewport);
   const shiftViewport = useBgStore((state) => state.shiftViewport);
+  const setViewportCenter = useBgStore((state) => state.setViewportCenter);
   const setViewportRange = useBgStore((state) => state.setViewportRange);
   const prependOlderEntries = useBgStore((state) => state.prependOlderEntries);
   const appendNewerEntries = useBgStore((state) => state.appendNewerEntries);
@@ -568,17 +575,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   useEffect(() => {
     if (!chartRef.current || !viewport) return;
 
-    let isDragging = false;
-    let dragStartX = 0;
-    let dragStartTime = 0;
-
     const handleMouseDown = (e: MouseEvent) => {
       // Only start dragging on left mouse button
       if (e.button !== 0) return;
 
-      isDragging = true;
-      dragStartX = e.clientX;
-      dragStartTime = viewport.center;
+      isDraggingRef.current = true;
+      dragStartXRef.current = e.clientX;
+      dragStartTimeRef.current = viewport.center;
 
       // Change cursor to grabbing
       if (chartRef.current) {
@@ -589,9 +592,9 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !uplotRef.current) return;
+      if (!isDraggingRef.current || !uplotRef.current || !viewport) return;
 
-      const deltaX = e.clientX - dragStartX;
+      const deltaX = e.clientX - dragStartXRef.current;
 
       // Convert pixel movement to time delta
       // Negative because dragging right should move chart left (back in time)
@@ -601,7 +604,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const timeDelta = -deltaX * pixelToTime;
 
       // Calculate new center
-      let newCenter = dragStartTime + timeDelta;
+      let newCenter = dragStartTimeRef.current + timeDelta;
 
       // Limit to newest data - don't scroll into the future
       const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
@@ -609,22 +612,19 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       newCenter = Math.max(oldestPossible, Math.min(newCenter, newestTimestamp));
 
-      // Update viewport to the new center
-      const actualDelta = newCenter - viewport.center;
-      if (Math.abs(actualDelta) > 0) {
-        shiftViewport(actualDelta);
+      // Set viewport center directly (more efficient than computing deltas)
+      setViewportCenter(newCenter);
 
-        // Check if we need to load more data
-        checkAndLoadOlderData();
-        checkAndLoadNewerData();
-      }
+      // Check if we need to load more data
+      checkAndLoadOlderData();
+      checkAndLoadNewerData();
 
       e.preventDefault();
     };
 
     const handleMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
 
         // Reset cursor
         if (chartRef.current) {
@@ -634,8 +634,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     };
 
     const handleMouseLeave = () => {
-      if (isDragging) {
-        isDragging = false;
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
 
         // Reset cursor
         if (chartRef.current) {
@@ -660,7 +660,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       window.removeEventListener('mouseup', handleMouseUp);
       chartElement.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [viewport, allEntries, shiftViewport, checkAndLoadOlderData, checkAndLoadNewerData]);
+  }, [viewport, allEntries, setViewportCenter, checkAndLoadOlderData, checkAndLoadNewerData]);
 
   if (!viewport) {
     return (
