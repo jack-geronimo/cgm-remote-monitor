@@ -738,8 +738,18 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         {/* Controls */}
         <div className="flex justify-between items-center mb-4">
         <div className="flex gap-2">
-          <button onClick={handlePanLeft} className="btn-secondary">← Back</button>
-          <button onClick={handlePanRight} className="btn-secondary">Forward →</button>
+          <button
+            onClick={handlePanLeft}
+            className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
+          >
+            ← Back
+          </button>
+          <button
+            onClick={handlePanRight}
+            className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
+          >
+            Forward →
+          </button>
         </div>
 
         <div className="flex gap-2">
@@ -747,7 +757,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
             <button
               key={range}
               onClick={() => handleZoomChange(range)}
-              className={`btn-secondary ${viewport.rangeMs === TIME_RANGES[range] ? 'bg-primary' : ''}`}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                viewport.rangeMs === TIME_RANGES[range]
+                  ? 'bg-bg-info text-white shadow-lg shadow-bg-info/50 scale-105 border-2 border-bg-info'
+                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3'
+              }`}
             >
               {range}
             </button>
