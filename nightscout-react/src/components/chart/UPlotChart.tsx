@@ -99,6 +99,7 @@ export function UPlotChart() {
       title: 'Blood Glucose',
       width: chartWidth.current,
       height: 400,
+      padding: [10, 10, 0, 10], // [top, right, bottom, left] - add left padding to ensure edge points are accessible
       scales: {
         x: {
           time: true,
@@ -134,6 +135,16 @@ export function UPlotChart() {
         drag: {
           x: false,
           y: false,
+        },
+        points: {
+          show: true,
+          size: (u, seriesIdx) => seriesIdx === 1 ? 10 : 0,
+          width: (u, seriesIdx, size) => size / 4,
+          stroke: (u, seriesIdx) => '#3B82F6',
+          fill: (u, seriesIdx) => '#ffffff',
+        },
+        focus: {
+          prox: 30, // Increase hover detection radius to 30 pixels
         },
       },
       hooks: {
