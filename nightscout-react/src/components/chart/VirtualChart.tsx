@@ -564,41 +564,101 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     };
   }, [chartData]);
 
-  // Handle mouse wheel scrolling
+  // Handle mouse drag to pan the chart
   useEffect(() => {
     if (!chartRef.current || !viewport) return;
 
-    const handleWheel = (e: WheelEvent) => {
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartTime = 0;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only start dragging on left mouse button
+      if (e.button !== 0) return;
+
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartTime = viewport.center;
+
+      // Change cursor to grabbing
+      if (chartRef.current) {
+        chartRef.current.style.cursor = 'grabbing';
+      }
+
       e.preventDefault();
+    };
 
-      // Scroll amount based on viewport range (10% of visible range per scroll)
-      const scrollAmount = viewport.rangeMs * 0.1;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !uplotRef.current) return;
 
-      if (e.deltaY > 0) {
-        // Scroll down = forward in time
-        const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
-        if (newestTimestamp) {
-          const newCenter = viewport.center + scrollAmount;
-          const maxCenter = newestTimestamp;
-          const limitedCenter = Math.min(newCenter, maxCenter);
+      const deltaX = e.clientX - dragStartX;
 
-          if (limitedCenter > viewport.center) {
-            shiftViewport(limitedCenter - viewport.center);
-            checkAndLoadNewerData();
-          }
-        }
-      } else {
-        // Scroll up = backward in time
-        shiftViewport(-scrollAmount);
+      // Convert pixel movement to time delta
+      // Negative because dragging right should move chart left (back in time)
+      const chart = uplotRef.current;
+      const bbox = chart.bbox;
+      const pixelToTime = viewport.rangeMs / bbox.width;
+      const timeDelta = -deltaX * pixelToTime;
+
+      // Calculate new center
+      let newCenter = dragStartTime + timeDelta;
+
+      // Limit to newest data - don't scroll into the future
+      const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
+      const oldestPossible = viewport.rangeMs / 2; // Can't go before half a range from start
+
+      newCenter = Math.max(oldestPossible, Math.min(newCenter, newestTimestamp));
+
+      // Update viewport to the new center
+      const actualDelta = newCenter - viewport.center;
+      if (Math.abs(actualDelta) > 0) {
+        shiftViewport(actualDelta);
+
+        // Check if we need to load more data
         checkAndLoadOlderData();
+        checkAndLoadNewerData();
+      }
+
+      e.preventDefault();
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+
+        // Reset cursor
+        if (chartRef.current) {
+          chartRef.current.style.cursor = 'grab';
+        }
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (isDragging) {
+        isDragging = false;
+
+        // Reset cursor
+        if (chartRef.current) {
+          chartRef.current.style.cursor = 'grab';
+        }
       }
     };
 
     const chartElement = chartRef.current;
-    chartElement.addEventListener('wheel', handleWheel, { passive: false });
+
+    // Set initial cursor
+    chartElement.style.cursor = 'grab';
+
+    chartElement.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    chartElement.addEventListener('mouseleave', handleMouseLeave);
 
     return () => {
-      chartElement.removeEventListener('wheel', handleWheel);
+      chartElement.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      chartElement.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, [viewport, allEntries, shiftViewport, checkAndLoadOlderData, checkAndLoadNewerData]);
 
