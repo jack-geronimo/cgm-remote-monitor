@@ -72,8 +72,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date || Date.now();
       const rangeMs = TIME_RANGES[defaultRange];
 
-      // Center viewport on the newest data
-      initViewport(newestTimestamp, rangeMs);
+      // Position newest data at 85% from left (show 85% history, 15% future/buffer)
+      // center - halfRange = left edge, so: newestTimestamp - 0.35*rangeMs - 0.5*rangeMs = newestTimestamp - 0.85*rangeMs
+      const center = newestTimestamp - (rangeMs * 0.35);
+      initViewport(center, rangeMs);
     }
   }, [viewport, allEntries, defaultRange, initViewport]);
 
