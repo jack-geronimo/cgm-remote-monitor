@@ -116,6 +116,17 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       uplotRef.current = null;
     }
 
+    // Helper function to get color based on BG value
+    const getColorForValue = (val: number) => {
+      if (val >= alarmUrgentHigh || val <= alarmUrgentLow) {
+        return 'rgb(239, 68, 68)'; // red-500
+      }
+      if (val >= alarmHigh || val <= alarmLow) {
+        return 'rgb(249, 115, 22)'; // orange-500
+      }
+      return 'rgb(34, 197, 94)'; // green-500
+    };
+
     // Plugin to draw colored BG zones
     const bgZonesPlugin: uPlot.Plugin = {
       hooks: {
@@ -194,11 +205,53 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       },
     };
 
+    // Plugin to draw colored data points based on BG values
+    const coloredPointsPlugin: uPlot.Plugin = {
+      hooks: {
+        drawSeries: [
+          (u, seriesIdx) => {
+            if (seriesIdx !== 1) return; // Only apply to BG series (series 1)
+
+            const { ctx } = u;
+            const xData = u.data[0];
+            const yData = u.data[1];
+
+            if (!xData || !yData) return;
+
+            ctx.save();
+
+            // Draw each point with its color
+            for (let i = 0; i < xData.length; i++) {
+              const xVal = xData[i];
+              const yVal = yData[i];
+
+              if (xVal == null || yVal == null) continue;
+
+              // Convert data coordinates to pixel coordinates
+              const cx = u.valToPos(xVal, 'x', true);
+              const cy = u.valToPos(yVal, 'y', true);
+
+              // Get color based on value
+              const color = getColorForValue(yVal);
+
+              // Draw point
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+
+            ctx.restore();
+          },
+        ],
+      },
+    };
+
     const opts: uPlot.Options = {
       title: 'Blood Glucose',
       width: chartRef.current.clientWidth,
       height: 500,
-      plugins: [bgZonesPlugin],
+      plugins: [bgZonesPlugin, coloredPointsPlugin],
       scales: {
         x: {
           time: true,
@@ -218,12 +271,10 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         {},
         {
           label: 'BG',
-          stroke: '#22C55E', // Default green color for points
+          stroke: 'transparent', // No line, points drawn by plugin
           width: 0, // No connecting line
           points: {
-            show: true,
-            size: 6,
-            fill: '#22C55E',
+            show: false, // Disable default points, use coloredPointsPlugin instead
           },
         },
       ],
