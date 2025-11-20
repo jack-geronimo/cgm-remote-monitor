@@ -467,18 +467,34 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // This allows hovering "between" data points while avoiding false positives
       const dynamicThreshold = Math.max(30, Math.min(avgSpacing * 0.75, 150));
 
+      const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
+      const pixelDist = minPixelDist;
+
+      // Add tolerance to grid boundary check to catch edge points
+      // Allow points slightly outside bbox (up to half the dynamic threshold)
+      const boundaryTolerance = dynamicThreshold * 0.5;
+      const isWithinGridWithTolerance =
+        closestPointX >= bbox.left - boundaryTolerance &&
+        closestPointX <= bbox.left + bbox.width + boundaryTolerance;
+
       if (shouldDebug) {
         console.log('=== CURSOR DEBUG (PIXEL-BASED) ===');
         console.log('Mouse X (px):', mouseX.toFixed(1));
         console.log('Canvas left:', canvasRect.left);
         console.log('Client X:', e.clientX);
         console.log('Bbox left:', bbox.left);
+        console.log('Bbox width:', bbox.width);
         console.log('Closest index:', closestIdx);
+        console.log('Closest point X:', closestPointX.toFixed(1));
         console.log('Closest data timestamp:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
         console.log('Closest data value:', data[1][closestIdx]);
         console.log('Min pixel distance:', minPixelDist.toFixed(1));
         console.log('Average spacing:', avgSpacing.toFixed(1));
         console.log('Dynamic threshold:', dynamicThreshold.toFixed(1));
+        console.log('Boundary tolerance:', boundaryTolerance.toFixed(1));
+        console.log('Is within grid (with tolerance):', isWithinGridWithTolerance);
+        console.log('Distance from left edge:', (closestPointX - bbox.left).toFixed(1));
+        console.log('Distance from right edge:', (bbox.left + bbox.width - closestPointX).toFixed(1));
 
         // Show neighbors with their rendered X positions
         console.log('NEIGHBORS:');
@@ -486,20 +502,16 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
           const marker = i === closestIdx ? ' ← SELECTED' : '';
           const pointX = chart.valToPos(data[0][i], 'x');
           const distFromMouse = Math.abs(pointX - mouseX);
-          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}, X=${pointX.toFixed(1)}px, dist=${distFromMouse.toFixed(1)}px${marker}`);
+          const distFromLeft = pointX - bbox.left;
+          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}, X=${pointX.toFixed(1)}px, dist=${distFromMouse.toFixed(1)}px, fromLeft=${distFromLeft.toFixed(1)}px${marker}`);
         }
         console.log('====================');
       }
 
-      const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
-      const pixelDist = minPixelDist;
-
       // Only show if:
       // 1. We're close enough to a data point (using dynamic threshold based on data spacing)
-      // 2. The data point is actually visible within the grid (not outside viewport)
-      const isWithinGrid = closestPointX >= bbox.left && closestPointX <= bbox.left + bbox.width;
-
-      if (pixelDist > dynamicThreshold || !isWithinGrid) {
+      // 2. The data point is within the grid boundaries (with tolerance for edge points)
+      if (pixelDist > dynamicThreshold || !isWithinGridWithTolerance) {
         setHoveredValue(null);
         return;
       }
