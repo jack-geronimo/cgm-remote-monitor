@@ -4,9 +4,9 @@ import 'uplot/dist/uPlot.min.css';
 import { useBgStore, useVisibleEntries } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { fetchOlderEntries, fetchNewerEntries } from '../../lib/api';
-import { CurrentValueWindow } from './CurrentValueWindow';
 import { ChartTooltip } from './ChartTooltip';
 import { VerticalCursorLine } from './VerticalCursorLine';
+import type { Treatment } from '../../types';
 
 // Time range presets in milliseconds
 const TIME_RANGES = {
@@ -41,7 +41,16 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       width: number;
       height: number;
     };
+    seriesIdx?: number; // Which series is hovered (1=BG, 2=Insulin, 3=Carbs)
+    treatment?: Treatment; // Treatment data if hovering treatment
   } | null>(null);
+
+  // Series visibility state
+  const [seriesVisible, setSeriesVisible] = useState({
+    bg: true,
+    insulin: true,
+    carbs: true,
+  });
 
   // Store data
   const allEntries = useBgStore((state) => state.entries);
@@ -55,6 +64,22 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
   // Only get visible entries
   const visibleEntries = useVisibleEntries();
+
+  // Get treatments for filtering
+  const allTreatments = useBgStore((state) => state.treatments) || [];
+
+  // Filter visible treatments based on viewport
+  const visibleTreatments = useMemo(() => {
+    if (!viewport || !allTreatments.length) return [];
+
+    const viewportStart = viewport.center - viewport.rangeMs / 2;
+    const viewportEnd = viewport.center + viewport.rangeMs / 2;
+
+    return allTreatments.filter(treatment => {
+      const timestamp = treatment.mills;
+      return timestamp >= viewportStart && timestamp <= viewportEnd;
+    });
+  }, [allTreatments, viewport]);
 
   // Settings
   const alarmUrgentHigh = useSettingsStore((state) => state.alarmUrgentHigh);
@@ -75,36 +100,118 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // Position newest data at 85% from left (show 85% history, 15% future/buffer)
       // center - halfRange = left edge, so: newestTimestamp - 0.35*rangeMs - 0.5*rangeMs = newestTimestamp - 0.85*rangeMs
       const center = newestTimestamp - (rangeMs * 0.35);
+
+      console.log('📍 Initializing viewport:', {
+        newestEntry: new Date(newestTimestamp).toLocaleString(),
+        range: defaultRange,
+        center: new Date(center).toLocaleString(),
+        totalEntries: allEntries.length,
+      });
+
       initViewport(center, rangeMs);
     }
   }, [viewport, allEntries, defaultRange, initViewport]);
 
-  // Convert entries to uPlot format - MEMOIZED
-  const chartData = useMemo(() => {
-    if (visibleEntries.length === 0) {
-      return [[], []];
+  // Helper to find closest BG value at a given time
+  const findClosestBgValue = (treatmentTime: number, entries: typeof visibleEntries): number => {
+    let closestEntry = entries[0];
+    let minDiff = Math.abs((entries[0]?.mills || entries[0]?.date || 0) - treatmentTime);
+
+    for (const entry of entries) {
+      const entryTime = entry.mills || entry.date;
+      const diff = Math.abs(entryTime - treatmentTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = entry;
+      }
     }
 
-    const timestamps: number[] = [];
-    const values: number[] = [];
+    return closestEntry?.sgv || 100;
+  };
 
-    // Sort by time (oldest first) and convert to seconds
-    const sortedEntries = [...visibleEntries].sort((a, b) => {
-      const timeA = a.mills || a.date;
-      const timeB = b.mills || b.date;
-      return timeA - timeB;
-    });
+  // Store treatment lookup map for tooltip
+  const treatmentMapRef = useRef<Map<number, Treatment>>(new Map());
 
-    sortedEntries.forEach(entry => {
+  // Convert entries + treatments to uPlot multi-series format - MEMOIZED
+  const chartData = useMemo(() => {
+    if (visibleEntries.length === 0) {
+      return [[], [], [], []];
+    }
+
+    // Clear and rebuild treatment map
+    treatmentMapRef.current.clear();
+
+    // Collect all unique timestamps from BG entries and treatments
+    const timestampMap = new Map<number, {
+      bg?: number;
+      insulin?: { amount: number; treatment: Treatment };
+      carbs?: { amount: number; treatment: Treatment };
+    }>();
+
+    // Add BG entries
+    visibleEntries.forEach(entry => {
       const timestamp = entry.mills || entry.date;
       if (timestamp && isFinite(entry.sgv)) {
-        timestamps.push(timestamp / 1000); // uPlot uses seconds
-        values.push(entry.sgv);
+        timestampMap.set(timestamp / 1000, {
+          bg: entry.sgv,
+        });
       }
     });
 
-    return [timestamps, values];
-  }, [visibleEntries]);
+    // Add treatments
+    visibleTreatments.forEach(treatment => {
+      const timestamp = treatment.mills / 1000;
+      const bgValue = findClosestBgValue(treatment.mills, visibleEntries);
+
+      const existing = timestampMap.get(timestamp) || {};
+
+      if (treatment.insulin && treatment.insulin > 0) {
+        existing.insulin = { amount: treatment.insulin, treatment };
+        // Store in treatment map for tooltip lookup
+        treatmentMapRef.current.set(timestamp, treatment);
+      }
+
+      if (treatment.carbs && treatment.carbs > 0) {
+        existing.carbs = { amount: treatment.carbs, treatment };
+        // Store in treatment map for tooltip lookup
+        treatmentMapRef.current.set(timestamp, treatment);
+      }
+
+      // Store BG value at treatment time if not already there
+      if (!existing.bg) {
+        existing.bg = bgValue;
+      }
+
+      timestampMap.set(timestamp, existing);
+    });
+
+    // Sort timestamps
+    const sortedTimestamps = Array.from(timestampMap.keys()).sort((a, b) => a - b);
+
+    // Create series arrays
+    const timestamps: number[] = [];
+    const bgValues: (number | null)[] = [];
+    const insulinValues: (number | null)[] = [];
+    const carbsValues: (number | null)[] = [];
+
+    sortedTimestamps.forEach(ts => {
+      const data = timestampMap.get(ts)!;
+
+      timestamps.push(ts);
+      bgValues.push(data.bg || null);
+      insulinValues.push(data.insulin ? data.bg! : null);
+      carbsValues.push(data.carbs ? data.bg! : null);
+    });
+
+    console.log('📊 Chart data created:', {
+      totalPoints: timestamps.length,
+      bgPoints: bgValues.filter(v => v !== null).length,
+      insulinPoints: insulinValues.filter(v => v !== null).length,
+      carbsPoints: carbsValues.filter(v => v !== null).length,
+    });
+
+    return [timestamps, bgValues, insulinValues, carbsValues];
+  }, [visibleEntries, visibleTreatments]);
 
   // Calculate dynamic Y-axis range (Hybrid approach) - MEMOIZED
   const yAxisRange = useMemo((): [number, number] => {
@@ -252,16 +359,14 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       },
     };
 
-    // Plugin to draw colored data points based on BG values
+    // Plugin to draw all series with custom shapes
     const coloredPointsPlugin: uPlot.Plugin = {
       hooks: {
         drawSeries: [
           (u, seriesIdx) => {
-            if (seriesIdx !== 1) return; // Only apply to BG series (series 1)
-
             const { ctx } = u;
             const xData = u.data[0];
-            const yData = u.data[1];
+            const yData = u.data[seriesIdx];
 
             if (!xData || !yData) return;
 
@@ -273,25 +378,71 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
             ctx.rect(left, top, width, height);
             ctx.clip();
 
-            // Draw each point with its color
-            for (let i = 0; i < xData.length; i++) {
-              const xVal = xData[i];
-              const yVal = yData[i];
+            // Draw based on series type
+            if (seriesIdx === 1 && seriesVisible.bg) {
+              // Series 1: BG Values (colored circles)
+              for (let i = 0; i < xData.length; i++) {
+                const xVal = xData[i];
+                const yVal = yData[i];
 
-              if (xVal == null || yVal == null) continue;
+                if (xVal == null || yVal == null) continue;
 
-              // Convert data coordinates to pixel coordinates
-              const cx = u.valToPos(xVal, 'x', true);
-              const cy = u.valToPos(yVal, 'y', true);
+                const cx = u.valToPos(xVal, 'x', true);
+                const cy = u.valToPos(yVal, 'y', true);
+                const color = getColorForValue(yVal);
 
-              // Get color based on value
-              const color = getColorForValue(yVal);
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+            } else if (seriesIdx === 2 && seriesVisible.insulin) {
+              // Series 2: Insulin (blue triangles)
+              for (let i = 0; i < xData.length; i++) {
+                const xVal = xData[i];
+                const yVal = yData[i];
 
-              // Draw point (radius 3 for size 6)
-              ctx.fillStyle = color;
-              ctx.beginPath();
-              ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
-              ctx.fill();
+                if (xVal == null || yVal == null) continue;
+
+                const cx = u.valToPos(xVal, 'x', true);
+                const cy = u.valToPos(yVal, 'y', true);
+
+                // Draw triangle pointing down
+                const size = 8;
+                ctx.fillStyle = '#3b82f6';
+                ctx.strokeStyle = '#1e40af';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy + size); // Bottom point
+                ctx.lineTo(cx - size, cy - size); // Top left
+                ctx.lineTo(cx + size, cy - size); // Top right
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+              }
+            } else if (seriesIdx === 3 && seriesVisible.carbs) {
+              // Series 3: Carbs (orange circles)
+              for (let i = 0; i < xData.length; i++) {
+                const xVal = xData[i];
+                const yVal = yData[i];
+
+                if (xVal == null || yVal == null) continue;
+
+                const cx = u.valToPos(xVal, 'x', true);
+                const cy = u.valToPos(yVal, 'y', true);
+
+                // Draw filled circle
+                const radius = 7;
+                ctx.fillStyle = '#f59e0b';
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+              }
             }
 
             ctx.restore();
@@ -301,7 +452,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     };
 
     const opts: uPlot.Options = {
-      title: 'Blood Glucose',
       width: chartRef.current.clientWidth,
       height: 500,
       plugins: [bgZonesPlugin, coloredPointsPlugin],
@@ -318,14 +468,36 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         },
       },
       series: [
-        {},
+        {}, // X-axis (time)
         {
+          // Series 1: BG Values
           label: 'BG',
-          stroke: 'transparent', // No line, points drawn by plugin
-          width: 0, // No connecting line
+          stroke: 'transparent',
+          width: 0,
           points: {
-            show: false, // Disable default points, use coloredPointsPlugin instead
+            show: false, // Custom rendering via plugin
           },
+          show: seriesVisible.bg,
+        },
+        {
+          // Series 2: Insulin Treatments
+          label: 'Insulin',
+          stroke: 'transparent',
+          width: 0,
+          points: {
+            show: false, // Custom rendering via plugin
+          },
+          show: seriesVisible.insulin,
+        },
+        {
+          // Series 3: Carbs Treatments
+          label: 'Carbs',
+          stroke: 'transparent',
+          width: 0,
+          points: {
+            show: false, // Custom rendering via plugin
+          },
+          show: seriesVisible.carbs,
         },
       ],
       axes: [
@@ -409,7 +581,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         uplotRef.current = null;
       }
     };
-  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData, timezone, locale, timeFormat]); // Create only when viewport initialized or settings change
+  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData, seriesVisible, timezone, locale, timeFormat]); // Create only when viewport initialized or settings change
 
   // Update chart data when visibleEntries change - NO DESTROY/CREATE!
   useEffect(() => {
@@ -689,8 +861,31 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         return;
       }
 
-      const value = data[1][closestIdx];
       const exactTimestamp = data[0][closestIdx];
+
+      // Determine which series has a value at this index
+      // Priority: Insulin > Carbs > BG (so treatments are preferred when hovering)
+      let seriesIdx = 1; // Default to BG
+      let value = data[1][closestIdx]; // BG value
+      let treatment: Treatment | undefined;
+
+      // Check insulin series (series 2)
+      if (data[2] && data[2][closestIdx] != null && seriesVisible.insulin) {
+        seriesIdx = 2;
+        value = data[2][closestIdx];
+        treatment = treatmentMapRef.current.get(exactTimestamp);
+      }
+      // Check carbs series (series 3) if no insulin
+      else if (data[3] && data[3][closestIdx] != null && seriesVisible.carbs) {
+        seriesIdx = 3;
+        value = data[3][closestIdx];
+        treatment = treatmentMapRef.current.get(exactTimestamp);
+      }
+      // Otherwise use BG series (series 1)
+      else if (data[1] && data[1][closestIdx] != null && seriesVisible.bg) {
+        seriesIdx = 1;
+        value = data[1][closestIdx];
+      }
 
       if (value != null && isFinite(value)) {
         // Calculate data point pixel positions (canvas coordinates)
@@ -716,6 +911,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
             width: bbox.width,
             height: bbox.height,
           },
+          seriesIdx,
+          treatment,
         });
       }
     };
@@ -837,41 +1034,76 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
   return (
     <>
-      <CurrentValueWindow />
       <div className="card">
         {/* Controls */}
-        <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          <button
-            onClick={handlePanLeft}
-            className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
-          >
-            ← Back
-          </button>
-          <button
-            onClick={handlePanRight}
-            className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
-          >
-            Forward →
-          </button>
-        </div>
-
-        <div className="flex gap-2">
-          {(Object.keys(TIME_RANGES) as Array<keyof typeof TIME_RANGES>).map(range => (
+        <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
+          {/* Pan buttons */}
+          <div className="flex gap-2">
             <button
-              key={range}
-              onClick={() => handleZoomChange(range)}
+              onClick={handlePanLeft}
+              className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={handlePanRight}
+              className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
+            >
+              Forward →
+            </button>
+          </div>
+
+          {/* Zoom buttons */}
+          <div className="flex gap-2">
+            {(Object.keys(TIME_RANGES) as Array<keyof typeof TIME_RANGES>).map(range => (
+              <button
+                key={range}
+                onClick={() => handleZoomChange(range)}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  viewport.rangeMs === TIME_RANGES[range]
+                    ? 'bg-bg-info text-white scale-105 border-2 border-bg-info'
+                    : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3'
+                }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          {/* Series toggle buttons */}
+          <div className="flex gap-2 border-l-2 border-surface-3 pl-4">
+            <button
+              onClick={() => setSeriesVisible(prev => ({ ...prev, bg: !prev.bg }))}
               className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                viewport.rangeMs === TIME_RANGES[range]
-                  ? 'bg-bg-info text-white scale-105 border-2 border-bg-info'
-                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3'
+                seriesVisible.bg
+                  ? 'bg-green-600 text-white border-2 border-green-700'
+                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 opacity-50'
               }`}
             >
-              {range}
+              ● BG
             </button>
-          ))}
+            <button
+              onClick={() => setSeriesVisible(prev => ({ ...prev, insulin: !prev.insulin }))}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                seriesVisible.insulin
+                  ? 'bg-blue-600 text-white border-2 border-blue-700'
+                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 opacity-50'
+              }`}
+            >
+              ▼ Insulin
+            </button>
+            <button
+              onClick={() => setSeriesVisible(prev => ({ ...prev, carbs: !prev.carbs }))}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                seriesVisible.carbs
+                  ? 'bg-orange-600 text-white border-2 border-orange-700'
+                  : 'bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 opacity-50'
+              }`}
+            >
+              ● Carbs
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Chart Container - relative for tooltip positioning */}
       <div className="relative w-full">

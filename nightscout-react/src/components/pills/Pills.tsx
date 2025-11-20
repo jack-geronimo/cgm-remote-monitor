@@ -29,11 +29,12 @@ function Pill({ label, value, icon, status = 'info' }: PillProps) {
 }
 
 export function Pills() {
-  const data = useBgStore((state) => state.data);
+  // Subscribe directly to devicestatus instead of deprecated data field
+  const devicestatus = useBgStore((state) => state.devicestatus);
 
   // Calculate IOB from device status - try multiple sources
   let iob: number | null = null;
-  const deviceStatus = data?.devicestatus?.[0];
+  const deviceStatus = devicestatus?.[0];
 
   if (deviceStatus) {
     // Try different IOB sources
@@ -69,7 +70,7 @@ export function Pills() {
     }
   }
 
-  const cobValue = (cob !== null && !isNaN(cob)) ? `${Math.round(cob)}g` : '---';
+  const cobValue = (cob !== null && !isNaN(cob)) ? `${cob.toFixed(1)}g` : '---';
   const cobStatus = (cob !== null && cob > 100) ? 'warning' : 'info';
 
   // Pump battery - handle both number and object formats

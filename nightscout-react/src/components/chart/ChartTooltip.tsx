@@ -1,5 +1,6 @@
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatTime, formatDate } from '../../lib/utils';
+import type { Treatment } from '../../types';
 
 interface ChartTooltipProps {
   value: {
@@ -7,6 +8,8 @@ interface ChartTooltipProps {
     value: number;
     x: number;
     y: number;
+    seriesIdx?: number; // Which series (1=BG, 2=Insulin, 3=Carbs)
+    treatment?: Treatment; // Treatment data if hovering treatment
   } | null;
 }
 
@@ -56,7 +59,29 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
     timeZone: timezone,
   });
 
-  const colors = getColors(value.value);
+  // Determine tooltip colors based on series type
+  const getTooltipColors = () => {
+    if (value.seriesIdx === 2) {
+      // Insulin series
+      return {
+        bg: 'bg-blue-600/95',
+        border: 'border-blue-700',
+        arrow: 'border-t-blue-600/95',
+      };
+    } else if (value.seriesIdx === 3) {
+      // Carbs series
+      return {
+        bg: 'bg-orange-600/95',
+        border: 'border-orange-700',
+        arrow: 'border-t-orange-600/95',
+      };
+    } else {
+      // BG series - use color based on value
+      return getColors(value.value);
+    }
+  };
+
+  const colors = getTooltipColors();
 
   // Position tooltip directly at/above the data point
   const tooltipStyle: React.CSSProperties = {
@@ -74,7 +99,7 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
     >
       {/* Arrow pointing down to the data point */}
       <div
-        className={`absolute left-1/2 bottom-0 translate-y-full -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent ${colors.arrow.replace('border-r-', 'border-t-')} pointer-events-none`}
+        className={`absolute left-1/2 bottom-0 translate-y-full -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent ${colors.arrow} pointer-events-none`}
         style={{
           borderLeftWidth: '6px',
           borderRightWidth: '6px',
@@ -85,11 +110,46 @@ export function ChartTooltip({ value }: ChartTooltipProps) {
 
       {/* Content */}
       <div className="flex flex-col text-white">
-        <span className="text-lg font-bold">
-          {value.value} <span className="text-xs font-normal">{units}</span>
-        </span>
-        <span className="text-xs opacity-90">{dateStr}</span>
-        <span className="text-xs opacity-90">{timeStr}</span>
+        {value.seriesIdx === 2 && value.treatment?.insulin ? (
+          // Insulin tooltip
+          <>
+            <span className="text-lg font-bold">
+              💉 {value.treatment.insulin.toFixed(1)} U
+            </span>
+            <span className="text-sm opacity-90">
+              BG: {value.value} {units}
+            </span>
+            <span className="text-xs opacity-90">{dateStr}</span>
+            <span className="text-xs opacity-90">{timeStr}</span>
+            {value.treatment.notes && (
+              <span className="text-xs opacity-75 mt-1 italic">{value.treatment.notes}</span>
+            )}
+          </>
+        ) : value.seriesIdx === 3 && value.treatment?.carbs ? (
+          // Carbs tooltip
+          <>
+            <span className="text-lg font-bold">
+              🍕 {value.treatment.carbs} g
+            </span>
+            <span className="text-sm opacity-90">
+              BG: {value.value} {units}
+            </span>
+            <span className="text-xs opacity-90">{dateStr}</span>
+            <span className="text-xs opacity-90">{timeStr}</span>
+            {value.treatment.notes && (
+              <span className="text-xs opacity-75 mt-1 italic">{value.treatment.notes}</span>
+            )}
+          </>
+        ) : (
+          // BG tooltip
+          <>
+            <span className="text-lg font-bold">
+              {value.value} <span className="text-xs font-normal">{units}</span>
+            </span>
+            <span className="text-xs opacity-90">{dateStr}</span>
+            <span className="text-xs opacity-90">{timeStr}</span>
+          </>
+        )}
       </div>
     </div>
   );

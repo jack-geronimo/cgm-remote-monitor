@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BgEntry, Direction, NightscoutData } from '../types';
+import type { BgEntry, Direction, NightscoutData, Treatment, DeviceStatus, Profile } from '../types';
 
 interface BgState {
   // Current BG data
@@ -10,9 +10,12 @@ interface BgState {
 
   // Historical data
   entries: BgEntry[];
+  treatments: Treatment[];
+  devicestatus: DeviceStatus[];
+  profile: Profile | null;
   isStale: boolean;
 
-  // All Nightscout data
+  // All Nightscout data (deprecated - use individual fields above)
   data: NightscoutData | null;
 
   // Virtual Viewport for efficient rendering
@@ -42,6 +45,9 @@ export const useBgStore = create<BgState>((set, get) => ({
   timestamp: null,
   delta: null,
   entries: [],
+  treatments: [],
+  devicestatus: [],
+  profile: null,
   isStale: false,
   data: null,
   viewport: null,
@@ -80,16 +86,40 @@ export const useBgStore = create<BgState>((set, get) => ({
   },
 
   setData: (data) => {
-    // Batch all updates into a single set() call to avoid cascading re-renders
-    const updates: Partial<BgState> = { data };
+    // Sort entries by timestamp descending (newest first)
+    const sortedEntries = [...data.entries].sort((a, b) => {
+      const timeA = a.mills || a.date;
+      const timeB = b.mills || b.date;
+      return timeB - timeA; // Descending order (newest first)
+    });
 
-    // Update entries and current BG
-    if (data.entries.length > 0) {
-      const latest = data.entries[0];
+    // Debug: Show data range
+    if (sortedEntries.length > 0) {
+      const newest = new Date(sortedEntries[0].mills || sortedEntries[0].date);
+      const oldest = new Date(sortedEntries[sortedEntries.length - 1].mills || sortedEntries[sortedEntries.length - 1].date);
+      console.log('📊 setData called:', {
+        entries: sortedEntries.length,
+        treatments: data.treatments?.length || 0,
+        newestEntry: newest.toLocaleString(),
+        oldestEntry: oldest.toLocaleString(),
+      });
+    }
+
+    // Batch all updates into a single set() call to avoid cascading re-renders
+    const updates: Partial<BgState> = {
+      data,
+      entries: sortedEntries,
+      treatments: data.treatments || [],
+      devicestatus: data.devicestatus || [],
+      profile: data.profile || null,
+    };
+
+    // Update current BG from latest entry
+    if (sortedEntries.length > 0) {
+      const latest = sortedEntries[0];
       const prev = get().currentBg;
       const delta = prev !== null ? latest.sgv - prev : null;
 
-      updates.entries = data.entries;
       updates.currentBg = latest.sgv;
       updates.direction = latest.direction;
       updates.timestamp = latest.mills || latest.date; // Use mills or date
@@ -158,7 +188,7 @@ export const useBgStore = create<BgState>((set, get) => ({
   },
 
   appendNewerEntries: (newerEntries) => {
-    const { entries, viewport } = get();
+    const { entries, viewport, currentBg } = get();
 
     // Filter out duplicates and merge newer entries at the beginning
     const existingIds = new Set(entries.map(e => e._id));
@@ -189,7 +219,21 @@ export const useBgStore = create<BgState>((set, get) => ({
       console.log(`Hard trimmed entries from ${beforeTrim} to 25000`);
     }
 
-    set({ entries: mergedEntries });
+    // Update current BG info if we have new entries
+    const updates: any = { entries: mergedEntries };
+
+    if (uniqueNewerEntries.length > 0) {
+      const latestEntry = mergedEntries[0];
+      const delta = currentBg !== null ? latestEntry.sgv - currentBg : null;
+
+      updates.currentBg = latestEntry.sgv;
+      updates.direction = latestEntry.direction;
+      updates.timestamp = latestEntry.mills || latestEntry.date;
+      updates.delta = delta;
+      updates.isStale = false;
+    }
+
+    set(updates);
   },
 
   // Initialize viewport with center and range
