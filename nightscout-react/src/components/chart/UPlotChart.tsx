@@ -122,12 +122,15 @@ export function UPlotChart() {
       ],
       axes: [
         {
-          stroke: 'rgba(255,255,255,0.5)',
+          stroke: 'rgba(255,255,255,0.9)',
           grid: { stroke: 'rgba(255,255,255,0.1)' },
+          ticks: { stroke: 'rgba(255,255,255,0.9)' },
+          font: '12px system-ui, sans-serif',
+          labelFont: '500 12px system-ui, sans-serif',
         },
         {
           show: false, // Hide Y-axis since we have a separate fixed axis
-          stroke: 'rgba(255,255,255,0.5)',
+          stroke: 'rgba(255,255,255,0.9)',
           grid: { stroke: 'rgba(255,255,255,0.1)' },
         },
       ],
@@ -377,13 +380,22 @@ export function UPlotChart() {
         {/* Fixed Y-axis */}
         <div className="flex-shrink-0" style={{ width: '50px', height: `${chartHeight}px` }}>
           <svg width="50" height={chartHeight} className="overflow-visible">
+            {/* Background for better readability */}
+            <rect
+              x="0"
+              y="0"
+              width="50"
+              height={chartHeight}
+              fill="rgba(0, 0, 0, 0.3)"
+            />
+
             {/* Y-axis line */}
             <line
               x1="45"
               y1="0"
               x2="45"
               y2={chartHeight}
-              stroke="rgba(255,255,255,0.5)"
+              stroke="rgba(255,255,255,0.9)"
               strokeWidth="1"
             />
 
@@ -401,8 +413,9 @@ export function UPlotChart() {
                     x="40"
                     y={yPos + 4}
                     textAnchor="end"
-                    fill="rgba(255,255,255,0.7)"
+                    fill="rgba(255,255,255,0.95)"
                     fontSize="12"
+                    fontWeight="500"
                   >
                     {value}
                   </text>
@@ -412,7 +425,7 @@ export function UPlotChart() {
                     y1={yPos}
                     x2="45"
                     y2={yPos}
-                    stroke="rgba(255,255,255,0.5)"
+                    stroke="rgba(255,255,255,0.9)"
                     strokeWidth="1"
                   />
                 </g>

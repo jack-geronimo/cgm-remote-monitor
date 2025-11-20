@@ -306,6 +306,14 @@ export function Chart() {
         {/* Fixed Y-axis on the left */}
         <div className="flex-shrink-0" style={{ width: '60px' }}>
           <svg width="60" height="400">
+            {/* Background for better readability */}
+            <rect
+              x="0"
+              y="0"
+              width="60"
+              height="400"
+              fill="rgba(0, 0, 0, 0.3)"
+            />
             <g transform="translate(0, 10)">
               {/* Y-axis labels */}
               {(() => {
@@ -330,7 +338,7 @@ export function Chart() {
                           y1={y}
                           x2="60"
                           y2={y}
-                          stroke="rgba(255,255,255,0.5)"
+                          stroke="rgba(255,255,255,0.9)"
                           strokeWidth="1"
                         />
                         <text
@@ -338,8 +346,9 @@ export function Chart() {
                           y={y}
                           textAnchor="end"
                           dominantBaseline="middle"
-                          fill="rgba(255,255,255,0.5)"
+                          fill="rgba(255,255,255,0.95)"
                           fontSize="12"
+                          fontWeight="500"
                         >
                           {formatBgValue(Math.round(value), units)}
                         </text>
@@ -424,7 +433,8 @@ export function Chart() {
               // Show date + time for better context
               return date.format('DD.MM HH:mm');
             }}
-            stroke="rgba(255,255,255,0.5)"
+            stroke="rgba(255,255,255,0.9)"
+            tick={{ fill: 'rgba(255,255,255,0.95)', fontWeight: 500 }}
             style={{ fontSize: '11px' }}
             height={50}
           />
