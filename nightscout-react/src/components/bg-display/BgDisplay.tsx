@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
 import { Clock } from 'lucide-react';
 import { useBgData } from '../../hooks/useBgData';
+import { useTimeAgo } from '../../hooks/useTimeAgo';
 import { useBgStore, useIsStale } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { getBgColor, getTrendArrow, formatTimeAgo, formatBgValue } from '../../lib/utils';
+import { getBgColor, getTrendArrow, formatBgValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
 export function BgDisplay() {
@@ -18,10 +19,12 @@ export function BgDisplay() {
   const isStale = useIsStale();
   const units = useSettingsStore((state) => state.units);
 
+  // Live-updating time ago
+  const timeAgo = useTimeAgo(timestamp);
+
   const bgColor = currentBg ? getBgColor(currentBg) : 'text-text-muted';
   const trendArrow = direction ? getTrendArrow(direction) : '';
   const displayValue = formatBgValue(currentBg, units);
-  const timeAgo = timestamp ? formatTimeAgo(timestamp) : '';
 
   return (
     <div className="card relative overflow-hidden py-2 px-3">

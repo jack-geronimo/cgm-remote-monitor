@@ -34,3 +34,12 @@ npm-debug.log
 # directories created by docker-compose.yml
 mongo-data/
 letsencrypt/
+
+
+### Claude Code ###
+# Local settings (personal preferences, machine-specific)
+.claude/settings.local.json
+.claude/**/*.local.json
+
+# MCP Server configuration (contains GitHub Personal Access Token)
+.mcp.json

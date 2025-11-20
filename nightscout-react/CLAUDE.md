@@ -25,14 +25,15 @@ Dieses Dokument bietet umfassende Anleitungen für AI-Assistenten (wie Claude), 
 1. [Technologie-Stack](#technologie-stack)
 2. [Projektstruktur](#projektstruktur)
 3. [Entwicklungsworkflow](#entwicklungsworkflow)
-4. [Code-Konventionen](#code-konventionen)
-5. [Komponenten-Architektur](#komponenten-architektur)
-6. [State Management](#state-management)
-7. [Styling mit Tailwind CSS](#styling-mit-tailwind-css)
-8. [Chart-Implementierung](#chart-implementierung)
-9. [Häufige Aufgaben](#häufige-aufgaben)
-10. [Testing](#testing)
-11. [Troubleshooting](#troubleshooting)
+4. [Authentifizierung](#authentifizierung)
+5. [Code-Konventionen](#code-konventionen)
+6. [Komponenten-Architektur](#komponenten-architektur)
+7. [State Management](#state-management)
+8. [Styling mit Tailwind CSS](#styling-mit-tailwind-css)
+9. [Chart-Implementierung](#chart-implementierung)
+10. [Häufige Aufgaben](#häufige-aufgaben)
+11. [Testing](#testing)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -169,6 +170,141 @@ npm run preview
 ```bash
 npm run lint
 ```
+
+---
+
+## Authentifizierung
+
+Das React-Frontend unterstützt zwei Authentifizierungsmethoden für den Zugriff auf die Nightscout API.
+
+### ✅ EMPFOHLEN: Subject Tokens (Admin Tools)
+
+**Was sind Subject Tokens?**
+- Rollenbasierte Zugriffsschlüssel aus Nightscout Admin Tools
+- Format: `name-hash` (z.B. `reactviewer-8e0a36cbe0a79ca4`)
+- Granulare Berechtigungen (nur lesen, schreiben, etc.)
+- Individuell widerrufbar
+
+**Vorteile:**
+- ✅ Minimale Berechtigungen (Principle of Least Privilege)
+- ✅ Sicherer für Production
+- ✅ Kann einzeln widerrufen werden
+- ✅ Ein Token pro Client/App
+- ✅ Einfaches Format
+
+**Subject Token erstellen:**
+
+1. Nightscout Web-UI öffnen → Menü (☰) → "Administrator-Werkzeuge"
+2. API_SECRET eingeben für Admin-Zugriff
+3. Tab "Zugriffsschlüssel" (Subjects/Access Keys)
+4. Subject-Namen eingeben (z.B. "reactviewer")
+5. Rollen auswählen:
+   ```
+   Subject Name: reactviewer
+   Rollen: ☑ readable (für nur-Lesen-Zugriff)
+   ```
+6. Token wird generiert und angezeigt
+
+**Im Projekt verwenden:**
+
+`.env.development.local`:
+```env
+VITE_API_URL=https://ihre-nightscout-instanz.herokuapp.com
+VITE_SUBJECT_TOKEN=reactviewer-8e0a36cbe0a79ca4
+```
+
+**Wichtige Hinweise:**
+- **Separate Variablen** für jede Auth-Methode:
+  - `VITE_SUBJECT_TOKEN` - Für Subject Tokens (empfohlen)
+  - `VITE_API_SECRET` - Für Master-Secret (nur für Testing)
+- **Priorität:** VITE_SUBJECT_TOKEN hat Vorrang
+- Subject Token → URL-Parameter `?token=xxx` (wie im alten Nightscout-Projekt)
+- API_SECRET → `api-secret` Header mit SHA1-Hash
+
+### ⚠️ LEGACY: API_SECRET
+
+**Was ist API_SECRET?**
+- Das Master-Secret aus der Nightscout-Konfiguration
+- Ein einziges, globales Passwort
+- Voller Zugriff auf alles
+
+**Nachteile:**
+- ❌ Keine granularen Berechtigungen
+- ❌ Kann nicht widerrufen werden
+- ❌ Voller Zugriff = Sicherheitsrisiko
+
+**Verwendung:**
+
+`.env.development.local`:
+```env
+VITE_API_URL=http://localhost:1337
+VITE_API_SECRET=IhrMasterAPISecret123
+```
+
+### Aktueller API-Zugriff (Read-Only)
+
+**Das React-Frontend benötigt aktuell NUR lesenden Zugriff:**
+
+- ✅ GET `/api/v1/entries.json` - Glukose-Daten
+- ✅ GET `/api/v1/treatments.json` - Behandlungen
+- ✅ GET `/api/v1/profile.json` - Profile
+- ✅ GET `/api/v1/devicestatus.json` - Gerätestatus
+- ✅ Socket.io - Echtzeit-Updates (nur empfangen)
+
+**Empfohlene Token-Rolle:** `readable`
+
+### Implementierung in `src/lib/api.ts`
+
+**Subject Tokens werden als URL-Parameter übergeben:**
+
+```typescript
+// Build URL with authentication parameter if using Subject Token
+function buildUrl(endpoint: string): string {
+  const subjectToken = import.meta.env.VITE_SUBJECT_TOKEN;
+
+  if (subjectToken) {
+    // Subject Token goes in URL parameter
+    const separator = endpoint.includes('?') ? '&' : '?';
+    return `${endpoint}${separator}token=${subjectToken}`;
+  }
+
+  // No Subject Token, return endpoint as-is
+  return endpoint;
+}
+
+// Headers only used for API_SECRET authentication
+async function getHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  // Check for Subject Token first (takes precedence)
+  const subjectToken = import.meta.env.VITE_SUBJECT_TOKEN;
+  if (subjectToken) {
+    // Subject Token is added to URL via buildUrl(), not headers
+    console.log('✅ Using Subject Token authentication');
+    return headers;
+  }
+
+  // Method 2: Legacy API_SECRET (fallback)
+  const apiSecret = import.meta.env.VITE_API_SECRET;
+  if (apiSecret) {
+    headers['api-secret'] = await hashApiSecret(apiSecret);
+    console.log('⚠️  Using legacy API_SECRET authentication');
+    return headers;
+  }
+
+  console.warn('⚠️  No authentication configured!');
+  return headers;
+}
+
+// Usage in fetch calls
+fetch(buildUrl('/api/v1/entries.json?count=1000'), { headers })
+```
+
+### Weitere Informationen
+
+Siehe `AUTH.md` für detaillierte Anleitung zur Token-Erstellung und -Verwaltung.
 
 ---
 
