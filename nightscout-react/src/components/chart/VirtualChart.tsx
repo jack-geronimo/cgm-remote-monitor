@@ -470,13 +470,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
       const pixelDist = minPixelDist;
 
-      // Add tolerance to grid boundary check to catch edge points
-      // Allow points slightly outside bbox (up to half the dynamic threshold)
-      const boundaryTolerance = dynamicThreshold * 0.5;
-      const isWithinGridWithTolerance =
-        closestPointX >= bbox.left - boundaryTolerance &&
-        closestPointX <= bbox.left + bbox.width + boundaryTolerance;
-
       if (shouldDebug) {
         console.log('=== CURSOR DEBUG (PIXEL-BASED) ===');
         console.log('Mouse X (px):', mouseX.toFixed(1));
@@ -491,8 +484,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         console.log('Min pixel distance:', minPixelDist.toFixed(1));
         console.log('Average spacing:', avgSpacing.toFixed(1));
         console.log('Dynamic threshold:', dynamicThreshold.toFixed(1));
-        console.log('Boundary tolerance:', boundaryTolerance.toFixed(1));
-        console.log('Is within grid (with tolerance):', isWithinGridWithTolerance);
         console.log('Distance from left edge:', (closestPointX - bbox.left).toFixed(1));
         console.log('Distance from right edge:', (bbox.left + bbox.width - closestPointX).toFixed(1));
 
@@ -508,10 +499,11 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         console.log('====================');
       }
 
-      // Only show if:
-      // 1. We're close enough to a data point (using dynamic threshold based on data spacing)
-      // 2. The data point is within the grid boundaries (with tolerance for edge points)
-      if (pixelDist > dynamicThreshold || !isWithinGridWithTolerance) {
+      // Only show tooltip if we're close enough to a data point
+      // No bbox boundary check needed - if a point is in the data array and rendered,
+      // and the pixel distance is small enough, show the tooltip
+      // This fixes the issue where edge points are visible but don't show tooltips
+      if (pixelDist > dynamicThreshold) {
         setHoveredValue(null);
         return;
       }
