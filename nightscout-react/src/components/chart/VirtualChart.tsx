@@ -645,6 +645,29 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     }
   };
 
+  // Handle jump to now (most recent data)
+  const handleJumpToNow = () => {
+    if (!viewport || allEntries.length === 0) return;
+
+    const newestTimestamp = allEntries[0]?.mills || allEntries[0]?.date;
+    if (!newestTimestamp) return;
+
+    // Position newest data at 85% from left (show 85% history, 15% future/buffer)
+    // Same logic as initialization
+    const center = newestTimestamp - (viewport.rangeMs * 0.35);
+
+    console.log('🎯 Jumping to now:', {
+      newestEntry: new Date(newestTimestamp).toLocaleString(),
+      newCenter: new Date(center).toLocaleString(),
+    });
+
+    // Set viewport center directly
+    setViewportCenter(center);
+
+    // Load newer data if needed
+    checkAndLoadNewerData();
+  };
+
   // Check if we need to load older data - PROACTIVE LOADING
   const checkAndLoadOlderData = useCallback(async () => {
     if (isLoadingRef.current || allEntries.length === 0 || !viewport) return;
@@ -1050,6 +1073,13 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
               className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
             >
               Forward →
+            </button>
+            <button
+              onClick={handleJumpToNow}
+              className="px-4 py-2 rounded-lg font-semibold text-sm bg-surface-2 text-text-secondary hover:bg-surface-3 border-2 border-surface-3 transition-all"
+              title="Jump to most recent data"
+            >
+              ⟳ Now
             </button>
           </div>
 
