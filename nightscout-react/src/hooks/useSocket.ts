@@ -32,18 +32,10 @@ export function useSocket() {
 
     // Listen for data updates from server
     const handleDataUpdate = (data: any) => {
-      console.log('📡 Socket dataUpdate event received', data);
-
       // Check if this is initial data (has full dataset) or incremental update
       const isInitialData = data.sgvs && data.treatments && data.devicestatus;
 
       if (isInitialData) {
-        console.log('📊 Received initial data from socket:', {
-          entries: data.sgvs?.length || 0,
-          treatments: data.treatments?.length || 0,
-          devicestatus: data.devicestatus?.length || 0,
-        });
-
         // Normalize all entries
         const normalizedEntries = (data.sgvs || []).map(normalizeEntry);
 
@@ -59,52 +51,75 @@ export function useSocket() {
         // Incremental update with BG entries
         const newEntries = data.sgvs.map(normalizeEntry);
 
-        console.log('📈 Received incremental update:', {
-          newEntries: newEntries.length,
-          latestSGV: newEntries[0]?.sgv,
-          direction: newEntries[0]?.direction,
-          entries: newEntries,
-          treatments: data.treatments?.length || 0,
-          devicestatus: data.devicestatus?.length || 0,
-        });
-
         // Add all new entries at once (avoids multiple store updates)
         appendNewerEntries(newEntries);
 
         // Update treatments and/or devicestatus if present
+        // These are INCREMENTAL updates - we need to MERGE, not replace!
         if (data.treatments || data.devicestatus) {
           const currentData = useBgStore.getState();
 
+          // Merge new treatments with existing ones
+          let mergedTreatments = currentData.treatments;
           if (data.treatments) {
-            console.log('💉 Received treatments update:', data.treatments.length);
+            // Filter out duplicates by _id
+            const existingIds = new Set(currentData.treatments.map((t: any) => t._id));
+            const newTreatments = data.treatments.filter((t: any) => !existingIds.has(t._id));
+
+            // Prepend new treatments (they are newer)
+            mergedTreatments = [...newTreatments, ...currentData.treatments];
           }
+
+          // Merge new devicestatus with existing ones
+          let mergedDevicestatus = currentData.devicestatus;
           if (data.devicestatus) {
-            console.log('📱 Received devicestatus update:', data.devicestatus.length);
+            // Filter out duplicates by _id
+            const existingIds = new Set(currentData.devicestatus.map((d: any) => d._id));
+            const newDevicestatus = data.devicestatus.filter((d: any) => !existingIds.has(d._id));
+
+            // Prepend new devicestatus (they are newer)
+            mergedDevicestatus = [...newDevicestatus, ...currentData.devicestatus];
           }
 
           setData({
             entries: currentData.entries,
-            treatments: data.treatments || currentData.treatments,
-            devicestatus: data.devicestatus || currentData.devicestatus,
+            treatments: mergedTreatments,
+            devicestatus: mergedDevicestatus,
             profile: currentData.profile,
             serverTime: Date.now(),
           });
         }
       } else if (data.devicestatus || data.treatments) {
         // Update that ONLY contains devicestatus and/or treatments (no BG entries)
+        // These are INCREMENTAL updates - we need to MERGE, not replace!
         const currentData = useBgStore.getState();
 
+        // Merge new treatments with existing ones
+        let mergedTreatments = currentData.treatments;
         if (data.treatments) {
-          console.log('💉 Received treatments-only update:', data.treatments.length);
+          // Filter out duplicates by _id
+          const existingIds = new Set(currentData.treatments.map((t: any) => t._id));
+          const newTreatments = data.treatments.filter((t: any) => !existingIds.has(t._id));
+
+          // Prepend new treatments (they are newer)
+          mergedTreatments = [...newTreatments, ...currentData.treatments];
         }
+
+        // Merge new devicestatus with existing ones
+        let mergedDevicestatus = currentData.devicestatus;
         if (data.devicestatus) {
-          console.log('📱 Received devicestatus-only update:', data.devicestatus.length);
+          // Filter out duplicates by _id
+          const existingIds = new Set(currentData.devicestatus.map((d: any) => d._id));
+          const newDevicestatus = data.devicestatus.filter((d: any) => !existingIds.has(d._id));
+
+          // Prepend new devicestatus (they are newer)
+          mergedDevicestatus = [...newDevicestatus, ...currentData.devicestatus];
         }
 
         setData({
           entries: currentData.entries,
-          treatments: data.treatments || currentData.treatments,
-          devicestatus: data.devicestatus || currentData.devicestatus,
+          treatments: mergedTreatments,
+          devicestatus: mergedDevicestatus,
           profile: currentData.profile,
           serverTime: Date.now(),
         });

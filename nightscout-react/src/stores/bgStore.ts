@@ -93,25 +93,15 @@ export const useBgStore = create<BgState>((set, get) => ({
       return timeB - timeA; // Descending order (newest first)
     });
 
-    // Debug: Show data range
-    if (sortedEntries.length > 0) {
-      const newest = new Date(sortedEntries[0].mills || sortedEntries[0].date);
-      const oldest = new Date(sortedEntries[sortedEntries.length - 1].mills || sortedEntries[sortedEntries.length - 1].date);
-      console.log('📊 setData called:', {
-        entries: sortedEntries.length,
-        treatments: data.treatments?.length || 0,
-        newestEntry: newest.toLocaleString(),
-        oldestEntry: oldest.toLocaleString(),
-      });
-    }
-
     // Batch all updates into a single set() call to avoid cascading re-renders
+    // Use existing references if data is undefined to avoid unnecessary re-renders
+    const current = get();
     const updates: Partial<BgState> = {
       data,
       entries: sortedEntries,
-      treatments: data.treatments || [],
-      devicestatus: data.devicestatus || [],
-      profile: data.profile || null,
+      treatments: data.treatments !== undefined ? data.treatments : current.treatments,
+      devicestatus: data.devicestatus !== undefined ? data.devicestatus : current.devicestatus,
+      profile: data.profile !== undefined ? data.profile : current.profile,
     };
 
     // Update current BG from latest entry

@@ -70,15 +70,19 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
   // Filter visible treatments based on viewport
   const visibleTreatments = useMemo(() => {
-    if (!viewport || !allTreatments.length) return [];
+    if (!viewport || !allTreatments.length) {
+      return [];
+    }
 
     const viewportStart = viewport.center - viewport.rangeMs / 2;
     const viewportEnd = viewport.center + viewport.rangeMs / 2;
 
-    return allTreatments.filter(treatment => {
+    const filtered = allTreatments.filter(treatment => {
       const timestamp = treatment.mills;
       return timestamp >= viewportStart && timestamp <= viewportEnd;
     });
+
+    return filtered;
   }, [allTreatments, viewport]);
 
   // Settings
@@ -100,13 +104,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // Position newest data at 85% from left (show 85% history, 15% future/buffer)
       // center - halfRange = left edge, so: newestTimestamp - 0.35*rangeMs - 0.5*rangeMs = newestTimestamp - 0.85*rangeMs
       const center = newestTimestamp - (rangeMs * 0.35);
-
-      console.log('📍 Initializing viewport:', {
-        newestEntry: new Date(newestTimestamp).toLocaleString(),
-        range: defaultRange,
-        center: new Date(center).toLocaleString(),
-        totalEntries: allEntries.length,
-      });
 
       initViewport(center, rangeMs);
     }
@@ -201,13 +198,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       bgValues.push(data.bg || null);
       insulinValues.push(data.insulin ? data.bg! : null);
       carbsValues.push(data.carbs ? data.bg! : null);
-    });
-
-    console.log('📊 Chart data created:', {
-      totalPoints: timestamps.length,
-      bgPoints: bgValues.filter(v => v !== null).length,
-      insulinPoints: insulinValues.filter(v => v !== null).length,
-      carbsPoints: carbsValues.filter(v => v !== null).length,
     });
 
     return [timestamps, bgValues, insulinValues, carbsValues];
@@ -581,7 +571,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         uplotRef.current = null;
       }
     };
-  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, chartData, seriesVisible, timezone, locale, timeFormat]); // Create only when viewport initialized or settings change
+  }, [viewport, alarmUrgentHigh, alarmUrgentLow, alarmHigh, alarmLow, seriesVisible, timezone, locale, timeFormat]); // Create only when viewport initialized or settings change (chartData updates handled separately)
 
   // Update chart data when visibleEntries change - NO DESTROY/CREATE!
   useEffect(() => {
@@ -795,9 +785,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       let closestIdx = -1;
       let minPixelDist = Infinity;
 
-      // DEBUG: Log every 20th mouse move
-      const shouldDebug = Math.random() < 0.05;
-
       for (let i = 0; i < data[0].length; i++) {
         const pointX = chart.valToPos(data[0][i], 'x');
         const pixelDist = Math.abs(pointX - mouseX);
@@ -845,35 +832,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       const closestPointX = chart.valToPos(data[0][closestIdx], 'x');
       const pixelDist = minPixelDist;
-
-      if (shouldDebug) {
-        console.log('=== CURSOR DEBUG (PIXEL-BASED) ===');
-        console.log('Mouse X (px):', mouseX.toFixed(1));
-        console.log('Canvas left:', canvasRect.left);
-        console.log('Client X:', e.clientX);
-        console.log('Bbox left:', bbox.left);
-        console.log('Bbox width:', bbox.width);
-        console.log('Closest index:', closestIdx);
-        console.log('Closest point X:', closestPointX.toFixed(1));
-        console.log('Closest data timestamp:', new Date(data[0][closestIdx] * 1000).toLocaleTimeString());
-        console.log('Closest data value:', data[1][closestIdx]);
-        console.log('Min pixel distance:', minPixelDist.toFixed(1));
-        console.log('Average spacing:', avgSpacing.toFixed(1));
-        console.log('Dynamic threshold:', dynamicThreshold.toFixed(1));
-        console.log('Distance from left edge:', (closestPointX - bbox.left).toFixed(1));
-        console.log('Distance from right edge:', (bbox.left + bbox.width - closestPointX).toFixed(1));
-
-        // Show neighbors with their rendered X positions
-        console.log('NEIGHBORS:');
-        for (let i = Math.max(0, closestIdx - 3); i <= Math.min(data[0].length - 1, closestIdx + 3); i++) {
-          const marker = i === closestIdx ? ' ← SELECTED' : '';
-          const pointX = chart.valToPos(data[0][i], 'x');
-          const distFromMouse = Math.abs(pointX - mouseX);
-          const distFromLeft = pointX - bbox.left;
-          console.log(`  [${i}]: ${new Date(data[0][i] * 1000).toLocaleTimeString()} = ${data[1][i]}, X=${pointX.toFixed(1)}px, dist=${distFromMouse.toFixed(1)}px, fromLeft=${distFromLeft.toFixed(1)}px${marker}`);
-        }
-        console.log('====================');
-      }
 
       // Only show tooltip if we're close enough to a data point
       // No bbox boundary check needed - if a point is in the data array and rendered,

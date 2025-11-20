@@ -9,14 +9,6 @@ export function createTreatmentMarkersPlugin(
   treatments: Treatment[],
   bgEntries: BgEntry[]
 ): uPlot.Plugin {
-  // Debug: Log treatment count when plugin is created
-  console.log('💉 Treatment markers plugin created:', {
-    totalTreatments: treatments.length,
-    withInsulin: treatments.filter(t => t.insulin && t.insulin > 0).length,
-    withCarbs: treatments.filter(t => t.carbs && t.carbs > 0).length,
-    bgEntries: bgEntries.length,
-  });
-
   // Match treatments with BG entries to find Y position
   const treatmentWithBg = treatments.map(treatment => {
     // Find closest BG entry by timestamp
@@ -51,9 +43,6 @@ export function createTreatmentMarkersPlugin(
         ctx.rect(left, top, width, height);
         ctx.clip();
 
-        // Count how many treatments we actually draw
-        let drawnCount = 0;
-
         // Draw each treatment at the BG level
         treatmentWithBg.forEach(({ treatment, bgValue }) => {
           const hasInsulin = treatment.insulin && treatment.insulin > 0;
@@ -70,8 +59,6 @@ export function createTreatmentMarkersPlugin(
           // Get Y position from BG value
           const y = u.valToPos(bgValue, 'y', true);
 
-          drawnCount++;
-
           // Draw treatment marker at BG position
           if (hasInsulin && hasCarbs) {
             // Both: Triangle marker with border
@@ -84,11 +71,6 @@ export function createTreatmentMarkersPlugin(
             drawCarbsMarker(ctx, x, y, treatment.carbs!);
           }
         });
-
-        // Debug: Log how many were actually drawn
-        if (drawnCount > 0) {
-          console.log(`💉 Drew ${drawnCount} treatment markers in viewport`);
-        }
 
         ctx.restore();
       }],

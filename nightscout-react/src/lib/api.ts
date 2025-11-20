@@ -109,16 +109,6 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
     // Normalize treatments to ensure mills field exists
     const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
 
-    console.log('🔧 Normalized treatments from REST API:', {
-      total: treatments.length,
-      firstTreatment: treatments[0] ? {
-        created_at: treatments[0].created_at,
-        mills: treatments[0].mills,
-        hasInsulin: !!treatments[0].insulin,
-        hasCarbs: !!treatments[0].carbs,
-      } : 'none',
-    });
-
     return {
       entries,
       treatments,
