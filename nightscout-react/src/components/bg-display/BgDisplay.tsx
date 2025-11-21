@@ -106,7 +106,7 @@ export function BgDisplay() {
 
   return (
     <motion.div
-      className="card relative overflow-hidden py-2 px-3"
+      className="card relative overflow-hidden py-2 px-3 h-full"
       animate={controls}
     >
       {/* Animated background glow */}

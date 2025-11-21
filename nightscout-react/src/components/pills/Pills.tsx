@@ -281,7 +281,7 @@ export function Pills() {
     : 'info';
 
   return (
-    <div className="card py-2 px-3">
+    <div className="card py-2 px-3 h-full">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold text-text-primary">Status</h2>
         {timeAgo && (

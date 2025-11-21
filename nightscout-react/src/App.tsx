@@ -76,12 +76,12 @@ function App() {
         {/* Top Row - BG Display and Pills */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           {/* BG Display */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 h-full">
             <BgDisplay />
           </div>
 
           {/* Pills */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             <Pills />
           </div>
         </div>
