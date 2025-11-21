@@ -35,14 +35,9 @@ function App() {
         {/* Header */}
         <header className="mb-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-text-primary">
-                Nightscout
-              </h1>
-              <p className="text-xs text-text-secondary">
-                CGM Remote Monitor
-              </p>
-            </div>
+            <h1 className="text-xl font-bold text-text-primary">
+              Nightscout <span className="text-xs text-text-secondary font-normal">• CGM Remote Monitor</span>
+            </h1>
 
             {/* Settings button */}
             <button
