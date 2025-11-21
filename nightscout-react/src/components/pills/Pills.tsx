@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { Activity, Droplet, Battery, Zap } from 'lucide-react';
+import { motion, useAnimation } from 'framer-motion';
 import { useBgStore } from '../../stores/bgStore';
 import { cn } from '../../lib/utils';
 
@@ -17,20 +19,155 @@ function Pill({ label, value, icon, status = 'info' }: PillProps) {
     info: 'pill-info',
   };
 
+  // Animation controls
+  const controls = useAnimation();
+  const prevValue = useRef<string | number>(value);
+  const isFirstRender = useRef(true);
+
+  // Trigger glow animation when value changes
+  useEffect(() => {
+    // Skip animation on first render
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevValue.current = value;
+      return;
+    }
+
+    // Only animate if value actually changed
+    if (prevValue.current !== value) {
+      prevValue.current = value;
+
+      // Trigger glow flicker animation (multiple quick pulses over 1.5s)
+      controls.start({
+        boxShadow: [
+          '0 0 0px rgba(59, 130, 246, 0)',      // Start: no glow
+          '0 0 25px rgba(59, 130, 246, 0.7)',   // Flash 1
+          '0 0 5px rgba(59, 130, 246, 0.2)',    // Dim
+          '0 0 25px rgba(59, 130, 246, 0.7)',   // Flash 2
+          '0 0 5px rgba(59, 130, 246, 0.2)',    // Dim
+          '0 0 20px rgba(59, 130, 246, 0.5)',   // Flash 3 (softer)
+          '0 0 0px rgba(59, 130, 246, 0)',      // End: fade out
+        ],
+        transition: {
+          duration: 1.5,
+          times: [0, 0.15, 0.25, 0.45, 0.55, 0.75, 1],
+          ease: 'easeInOut',
+        },
+      });
+    }
+  }, [value, controls]);
+
   return (
-    <div className={cn('pill', statusClasses[status], 'py-1 px-2')}>
+    <motion.div
+      className={cn('pill', statusClasses[status], 'py-1 px-2')}
+      animate={controls}
+    >
       {icon && <span className="flex-shrink-0 w-3 h-3">{icon}</span>}
       <div className="flex flex-col">
         <span className="text-[10px] opacity-75">{label}</span>
         <span className="text-sm font-semibold">{value}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 export function Pills() {
   // Subscribe directly to devicestatus instead of deprecated data field
   const devicestatus = useBgStore((state) => state.devicestatus);
+  const setData = useBgStore((state) => state.setData);
+  const entries = useBgStore((state) => state.entries);
+  const treatments = useBgStore((state) => state.treatments);
+  const profile = useBgStore((state) => state.profile);
+
+  // Development helper: Expose test function to window (only in dev mode)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).testPillUpdate = () => {
+        const currentDeviceStatus = devicestatus?.[0] || {};
+
+        // Pick a random value to change
+        const valuesToChange = ['iob', 'cob', 'battery', 'reservoir', 'uploader'];
+        const randomPick = valuesToChange[Math.floor(Math.random() * valuesToChange.length)];
+
+        // Start with current values
+        const updatedDeviceStatus = { ...currentDeviceStatus };
+
+        let changedValue = '';
+
+        // Only change one random value
+        switch (randomPick) {
+          case 'iob':
+            const randomIOB = (Math.random() * 5).toFixed(2);
+            updatedDeviceStatus.openaps = {
+              ...currentDeviceStatus.openaps,
+              iob: { iob: parseFloat(randomIOB) },
+            };
+            changedValue = `IOB: ${randomIOB}U`;
+            break;
+
+          case 'cob':
+            const randomCOB = Math.floor(Math.random() * 100);
+            updatedDeviceStatus.openaps = {
+              ...currentDeviceStatus.openaps,
+              suggested: {
+                ...(currentDeviceStatus.openaps?.suggested || {}),
+                COB: randomCOB
+              },
+            };
+            changedValue = `COB: ${randomCOB}g`;
+            break;
+
+          case 'battery':
+            const randomBattery = Math.floor(Math.random() * 100);
+            updatedDeviceStatus.pump = {
+              ...currentDeviceStatus.pump,
+              battery: randomBattery,
+            };
+            changedValue = `Battery: ${randomBattery}%`;
+            break;
+
+          case 'reservoir':
+            const randomReservoir = (Math.random() * 200).toFixed(1);
+            updatedDeviceStatus.pump = {
+              ...currentDeviceStatus.pump,
+              reservoir: parseFloat(randomReservoir),
+            };
+            changedValue = `Reservoir: ${randomReservoir}U`;
+            break;
+
+          case 'uploader':
+            const randomUploader = Math.floor(Math.random() * 100);
+            updatedDeviceStatus.uploaderBattery = randomUploader;
+            changedValue = `Uploader: ${randomUploader}%`;
+            break;
+        }
+
+        // Update timestamp
+        updatedDeviceStatus._id = currentDeviceStatus._id || 'test-' + Date.now();
+        updatedDeviceStatus.created_at = new Date().toISOString();
+        updatedDeviceStatus.mills = Date.now();
+
+        // Update store with new device status
+        setData({
+          entries,
+          treatments,
+          devicestatus: [updatedDeviceStatus, ...(devicestatus || [])],
+          profile,
+          serverTime: Date.now(),
+        });
+
+        console.log(`🧪 Test update: ${changedValue}`);
+      };
+
+      console.log('🧪 Dev mode: Use testPillUpdate() in console to trigger pill glow animation');
+    }
+
+    return () => {
+      if (import.meta.env.DEV) {
+        delete (window as any).testPillUpdate;
+      }
+    };
+  }, [devicestatus, setData, entries, treatments, profile]);
 
   // Calculate IOB from device status - try multiple sources
   let iob: number | null = null;
