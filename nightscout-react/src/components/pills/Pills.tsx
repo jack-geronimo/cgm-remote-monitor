@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
-import { Activity, Droplet, Battery, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Activity, Droplet, Battery, Zap, Clock } from 'lucide-react';
 import { motion, useAnimation } from 'framer-motion';
 import { useBgStore } from '../../stores/bgStore';
+import { useTimeAgo } from '../../hooks/useTimeAgo';
 import { cn } from '../../lib/utils';
 
 interface PillProps {
@@ -63,7 +64,7 @@ function Pill({ label, value, icon, status = 'info' }: PillProps) {
       animate={controls}
     >
       {icon && <span className="flex-shrink-0 w-3 h-3">{icon}</span>}
-      <div className="flex flex-col">
+      <div className="flex items-baseline gap-1">
         <span className="text-[10px] opacity-75">{label}</span>
         <span className="text-sm font-semibold">{value}</span>
       </div>
@@ -78,6 +79,12 @@ export function Pills() {
   const entries = useBgStore((state) => state.entries);
   const treatments = useBgStore((state) => state.treatments);
   const profile = useBgStore((state) => state.profile);
+
+  // Get last update timestamp from devicestatus
+  const lastUpdateTime = devicestatus?.[0]?.mills || devicestatus?.[0]?.created_at
+    ? new Date(devicestatus[0].mills || devicestatus[0].created_at).getTime()
+    : null;
+  const timeAgo = useTimeAgo(lastUpdateTime);
 
   // Development helper: Expose test function to window (only in dev mode)
   useEffect(() => {
@@ -275,7 +282,15 @@ export function Pills() {
 
   return (
     <div className="card py-2 px-3">
-      <h2 className="text-sm font-semibold text-text-primary mb-2">Status</h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-text-primary">Status</h2>
+        {timeAgo && (
+          <div className="flex items-center gap-1 text-text-secondary">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs">{timeAgo}</span>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {/* IOB - Insulin on Board */}
