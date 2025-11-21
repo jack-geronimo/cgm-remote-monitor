@@ -74,8 +74,10 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Update current BG from latest entry
     if (entries.length > 0) {
       const latest = entries[0];
-      const prev = get().currentBg;
-      const delta = prev !== null ? latest.sgv - prev : null;
+      // Calculate delta from the two most recent entries (not from previous currentBg)
+      const delta = entries.length >= 2
+        ? entries[0].sgv - entries[1].sgv
+        : null;
 
       updates.currentBg = latest.sgv;
       updates.direction = latest.direction;
@@ -109,8 +111,11 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Update current BG from latest entry
     if (sortedEntries.length > 0) {
       const latest = sortedEntries[0];
-      const prev = get().currentBg;
-      const delta = prev !== null ? latest.sgv - prev : null;
+      // Calculate delta from the two most recent entries (not from previous currentBg)
+      // This ensures delta is stable and doesn't reset to 0 when setData is called without new entries
+      const delta = sortedEntries.length >= 2
+        ? sortedEntries[0].sgv - sortedEntries[1].sgv
+        : null;
 
       updates.currentBg = latest.sgv;
       updates.direction = latest.direction;
@@ -123,7 +128,7 @@ export const useBgStore = create<BgState>((set, get) => ({
   },
 
   updateFromSocket: (entry) => {
-    const { entries, currentBg } = get();
+    const { entries } = get();
 
     // Add new entry to the beginning
     const newEntries = [entry, ...entries];
@@ -131,8 +136,10 @@ export const useBgStore = create<BgState>((set, get) => ({
     // Keep only last 288 entries (24 hours at 5min intervals)
     const trimmedEntries = newEntries.slice(0, 288);
 
-    // Batch all updates into a single set() call to avoid cascading re-renders
-    const delta = currentBg !== null ? entry.sgv - currentBg : null;
+    // Calculate delta from the two most recent entries (consistent with setData/setEntries)
+    const delta = trimmedEntries.length >= 2
+      ? trimmedEntries[0].sgv - trimmedEntries[1].sgv
+      : null;
 
     set({
       entries: trimmedEntries,
