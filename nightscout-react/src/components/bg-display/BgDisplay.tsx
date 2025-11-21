@@ -121,72 +121,76 @@ export function BgDisplay() {
       />
 
       <div className="relative z-10">
-        {/* Main BG Display */}
-        <div className="flex items-center justify-center gap-2 md:gap-3">
-          {/* BG Value */}
+        {/* Main Layout: BG/Trend on top, Delta below, Timestamp top right */}
+        <div className="flex items-start justify-between gap-2">
+          {/* Left: BG and Delta stacked */}
           <motion.div
             key={currentBg}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center"
+            className="flex flex-col gap-0.5"
           >
-            <span
-              className={cn(
-                'font-bold tracking-tight transition-colors duration-300',
-                'text-4xl md:text-5xl',
-                isStale && 'opacity-50 line-through',
-                bgColor
-              )}
-            >
-              {displayValue}
-            </span>
+            {/* Line 1: BG Value + Units + Trend */}
+            <div className="flex flex-wrap items-baseline gap-1.5 md:gap-2">
+              <div className="flex items-baseline gap-1">
+                <span
+                  className={cn(
+                    'font-bold tracking-tight transition-colors duration-300',
+                    'text-3xl md:text-4xl',
+                    isStale && 'opacity-50 line-through',
+                    bgColor
+                  )}
+                >
+                  {displayValue}
+                </span>
+                <span className="text-xs text-text-secondary">
+                  {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
+                </span>
+              </div>
 
-            {/* Units */}
-            <span className="text-xs md:text-sm text-text-secondary mt-0.5">
-              {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
-            </span>
+              {/* Trend Arrow */}
+              {trendArrow && (
+                <motion.span
+                  key={direction}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    'text-2xl md:text-3xl',
+                    isStale && 'opacity-50',
+                    bgColor
+                  )}
+                  role="img"
+                  aria-label={`Trend: ${direction}`}
+                >
+                  {trendArrow}
+                </motion.span>
+              )}
+            </div>
+
+            {/* Line 2: Delta below BG */}
+            {delta !== null && (
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm text-text-secondary">Δ</span>
+                <span className={cn('text-sm md:text-base font-medium', bgColor)}>
+                  {delta > 0 ? '+' : ''}
+                  {formatBgValue(delta, units)} {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
+                </span>
+              </div>
+            )}
           </motion.div>
 
-          {/* Trend Arrow */}
-          {trendArrow && (
-            <motion.span
-              key={direction}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                'text-3xl md:text-4xl',
-                isStale && 'opacity-50',
-                bgColor
-              )}
-              role="img"
-              aria-label={`Trend: ${direction}`}
-            >
-              {trendArrow}
-            </motion.span>
-          )}
-        </div>
-
-        {/* Delta */}
-        {delta !== null && (
-          <div className="mt-2 text-center">
-            <span className={cn('text-sm font-medium', bgColor)}>
-              {delta > 0 ? '+' : ''}
-              {formatBgValue(delta, units)} {units === 'mg/dl' ? 'mg/dL' : 'mmol/L'}
+          {/* Right: Timestamp - Top Right */}
+          <div className="flex items-center gap-1 text-text-secondary">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs md:text-sm whitespace-nowrap">
+              {timeAgo || 'Loading...'}
             </span>
           </div>
-        )}
-
-        {/* Timestamp */}
-        <div className="mt-2 flex items-center justify-center gap-1 text-text-secondary">
-          <Clock className="w-3 h-3" />
-          <span className="text-xs md:text-sm">
-            {timeAgo || 'Loading...'}
-          </span>
         </div>
 
-        {/* Stale Warning */}
+        {/* Stale Warning - Below */}
         {isStale && timestamp && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
