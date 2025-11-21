@@ -3,7 +3,7 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { useBgStore, useVisibleEntries } from '../../stores/bgStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { fetchOlderEntries, fetchNewerEntries, fetchOlderTreatments, fetchNewerTreatments } from '../../lib/api';
+import { fetchOlderEntries, fetchNewerEntries, fetchOlderTreatmentsByCreatedAt } from '../../lib/api';
 import { ChartTooltip } from './ChartTooltip';
 import { VerticalCursorLine } from './VerticalCursorLine';
 import type { Treatment } from '../../types';
@@ -63,7 +63,6 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
   const prependOlderEntries = useBgStore((state) => state.prependOlderEntries);
   const appendNewerEntries = useBgStore((state) => state.appendNewerEntries);
   const prependOlderTreatments = useBgStore((state) => state.prependOlderTreatments);
-  const appendNewerTreatments = useBgStore((state) => state.appendNewerTreatments);
 
   // Only get visible entries
   const visibleEntries = useVisibleEntries();
@@ -673,41 +672,68 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     // This ensures we always have data to scroll to
     const loadThreshold = viewport.rangeMs * 1.5;
 
-    if (viewportLeftEdge < oldestEntryTimestamp + loadThreshold) {
-      // Get oldest treatment timestamp for loading treatments
-      const oldestTreatmentTimestamp = allTreatments.length > 0
-        ? allTreatments[allTreatments.length - 1]?.mills
-        : oldestEntryTimestamp;
+    // Debug: Always log check status
+    const shouldLoad = viewportLeftEdge < oldestEntryTimestamp + loadThreshold;
+    console.log('🔄 Check older data:', {
+      shouldLoad,
+      viewportLeft: new Date(viewportLeftEdge).toLocaleString(),
+      oldestEntry: new Date(oldestEntryTimestamp).toLocaleString(),
+      distance: ((oldestEntryTimestamp + loadThreshold - viewportLeftEdge) / 1000 / 60 / 60).toFixed(1) + 'h',
+    });
 
-      console.log('Loading older data...', {
-        viewportLeftEdge: new Date(viewportLeftEdge),
-        oldestEntry: new Date(oldestEntryTimestamp),
-        oldestTreatment: oldestTreatmentTimestamp ? new Date(oldestTreatmentTimestamp) : 'none',
-        threshold: loadThreshold / 1000 / 60 / 60 + 'h',
+    if (shouldLoad) {
+      console.log('🔍 Loading older data - TRIGGER', {
+        viewportLeftEdge: new Date(viewportLeftEdge).toLocaleString(),
+        oldestEntry: new Date(oldestEntryTimestamp).toLocaleString(),
+        entryCount: allEntries.length,
+        threshold: (loadThreshold / 1000 / 60 / 60).toFixed(1) + 'h',
       });
 
       isLoadingRef.current = true;
 
       try {
-        // Load 3 days worth of data (864 entries at 5min intervals)
-        // Always load both entries AND treatments when scrolling back
+        // Load entries AND treatments when scrolling back
+        console.log('📥 Loading older data:', {
+          entryTimestamp: new Date(oldestEntryTimestamp).toLocaleString(),
+          treatmentCount: allTreatments.length,
+        });
+
+        // Load entries based on timestamp
+        const olderEntriesPromise = fetchOlderEntries(oldestEntryTimestamp, 864);
+
+        // Load treatments based on created_at of oldest treatment
+        let olderTreatmentsPromise: Promise<Treatment[]> | null = null;
+        if (allTreatments.length > 0) {
+          const oldestTreatment = allTreatments[allTreatments.length - 1];
+          const oldestCreatedAt = oldestTreatment.created_at;
+          console.log(`📥 Loading treatments before created_at: ${oldestCreatedAt}`);
+          olderTreatmentsPromise = fetchOlderTreatmentsByCreatedAt(oldestCreatedAt, 1000);
+        }
+
         const [olderEntries, olderTreatments] = await Promise.all([
-          fetchOlderEntries(oldestEntryTimestamp, 864),
-          fetchOlderTreatments(oldestTreatmentTimestamp || oldestEntryTimestamp, 200)
+          olderEntriesPromise,
+          olderTreatmentsPromise || Promise.resolve([]),
         ]);
+
+        console.log('📦 API Results:', {
+          entriesReceived: olderEntries.length,
+          treatmentsReceived: olderTreatments.length,
+          oldestReceivedEntry: olderEntries.length > 0 ? new Date(olderEntries[olderEntries.length - 1]?.mills || olderEntries[olderEntries.length - 1]?.date).toLocaleString() : 'none',
+          oldestReceivedTreatment: olderTreatments.length > 0 ? new Date(olderTreatments[olderTreatments.length - 1]?.mills).toLocaleString() : 'none',
+        });
 
         if (olderEntries.length > 0) {
           prependOlderEntries(olderEntries);
-          console.log(`Loaded ${olderEntries.length} older entries`);
+          console.log(`✅ Loaded ${olderEntries.length} older entries`);
         } else {
-          console.log('No more older entries available');
+          console.log('⚠️ No more older entries available');
         }
 
         if (olderTreatments.length > 0) {
           prependOlderTreatments(olderTreatments);
-          console.log(`Loaded ${olderTreatments.length} older treatments`);
+          console.log(`✅ Loaded ${olderTreatments.length} older treatments`);
         } else {
-          console.log('No more older treatments available');
+          console.log('⚠️ No more older treatments available');
         }
       } catch (error) {
         console.error('Failed to load older data:', error);
@@ -732,40 +758,34 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     const loadThreshold = viewport.rangeMs * 1.5;
 
     if (viewportRightEdge > newestEntryTimestamp - loadThreshold) {
-      // Get newest treatment timestamp for loading treatments
-      const newestTreatmentTimestamp = allTreatments.length > 0
-        ? allTreatments[0]?.mills
-        : newestEntryTimestamp;
-
-      console.log('Loading newer data...', {
-        viewportRightEdge: new Date(viewportRightEdge),
-        newestEntry: new Date(newestEntryTimestamp),
-        newestTreatment: newestTreatmentTimestamp ? new Date(newestTreatmentTimestamp) : 'none',
-        threshold: loadThreshold / 1000 / 60 / 60 + 'h',
+      console.log('🔍 Loading newer data - TRIGGER', {
+        viewportRightEdge: new Date(viewportRightEdge).toLocaleString(),
+        newestEntry: new Date(newestEntryTimestamp).toLocaleString(),
+        entryCount: allEntries.length,
+        threshold: (loadThreshold / 1000 / 60 / 60).toFixed(1) + 'h',
       });
 
       isLoadingRef.current = true;
 
       try {
         // Load 3 days worth of data (864 entries at 5min intervals)
-        // Always load both entries AND treatments when scrolling forward
-        const [newerEntries, newerTreatments] = await Promise.all([
-          fetchNewerEntries(newestEntryTimestamp, 864),
-          fetchNewerTreatments(newestTreatmentTimestamp || newestEntryTimestamp, 200)
-        ]);
+        // NOTE: Treatments are loaded all at once during initial load, no lazy loading
+        console.log('📥 Loading newer entries:', {
+          afterTimestamp: new Date(newestEntryTimestamp).toLocaleString(),
+        });
+
+        const newerEntries = await fetchNewerEntries(newestEntryTimestamp, 864);
+
+        console.log('📦 API Results:', {
+          entriesReceived: newerEntries.length,
+          newestReceivedEntry: newerEntries.length > 0 ? new Date(newerEntries[0]?.mills || newerEntries[0]?.date).toLocaleString() : 'none',
+        });
 
         if (newerEntries.length > 0) {
           appendNewerEntries(newerEntries);
-          console.log(`Loaded ${newerEntries.length} newer entries`);
+          console.log(`✅ Loaded ${newerEntries.length} newer entries`);
         } else {
-          console.log('No more newer entries available');
-        }
-
-        if (newerTreatments.length > 0) {
-          appendNewerTreatments(newerTreatments);
-          console.log(`Loaded ${newerTreatments.length} newer treatments`);
-        } else {
-          console.log('No more newer treatments available');
+          console.log('⚠️ No more newer entries available');
         }
       } catch (error) {
         console.error('Failed to load newer data:', error);
@@ -773,7 +793,7 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         isLoadingRef.current = false;
       }
     }
-  }, [allEntries, allTreatments, viewport, appendNewerEntries, appendNewerTreatments]);
+  }, [allEntries, viewport, appendNewerEntries]);
 
   // Check for data loading when viewport changes (both directions)
   useEffect(() => {

@@ -96,7 +96,7 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
 
     const [entriesRes, treatmentsRes, profileRes, devicestatusRes] = await Promise.all([
       fetch(buildUrl(`${API_BASE}/entries.json?count=1000`), { headers }), // ~3.5 days for initial load
-      fetch(buildUrl(`${API_BASE}/treatments.json?count=200`), { headers }),
+      fetch(buildUrl(`${API_BASE}/treatments.json?count=1000`), { headers }), // Initial treatments
       fetch(buildUrl(`${API_BASE}/profile.json`), { headers }),
       fetch(buildUrl(`${API_BASE}/devicestatus.json?count=1`), { headers }),
     ]);
@@ -109,6 +109,13 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
     // Normalize treatments to ensure mills field exists
     const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
 
+    console.log('🏥 Initial data load:', {
+      entries: entries.length,
+      treatments: treatments.length,
+      oldestTreatment: treatments.length > 0 ? new Date(treatments[treatments.length - 1].mills).toLocaleString() : 'none',
+      newestTreatment: treatments.length > 0 ? new Date(treatments[0].mills).toLocaleString() : 'none',
+    });
+
     return {
       entries,
       treatments,
@@ -118,6 +125,32 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
     };
   } catch (error) {
     console.error('Failed to fetch Nightscout data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch older treatments based on created_at
+ * Uses the created_at of the oldest treatment we have
+ */
+export async function fetchOlderTreatmentsByCreatedAt(beforeCreatedAt: string, count: number = 1000): Promise<Treatment[]> {
+  try {
+    const headers = await getHeaders();
+    const endpoint = `${API_BASE}/treatments.json?find[created_at][$lt]=${beforeCreatedAt}&count=${count}`;
+    const res = await fetch(buildUrl(endpoint), { headers });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch older treatments: ${res.status} ${res.statusText}`);
+    }
+
+    const rawTreatments: any[] = await res.json();
+    const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
+
+    console.log(`📥 Loaded ${treatments.length} older treatments (before ${beforeCreatedAt})`);
+
+    return treatments;
+  } catch (error) {
+    console.error('Failed to fetch older treatments:', error);
     throw error;
   }
 }
@@ -168,55 +201,9 @@ export async function fetchNewerEntries(afterTimestamp: number, count: number = 
   }
 }
 
-/**
- * Fetch older treatments before a given timestamp
- * Used for infinite scroll backwards in time
- */
-export async function fetchOlderTreatments(beforeTimestamp: number, count: number = 200): Promise<Treatment[]> {
-  try {
-    const headers = await getHeaders();
-    // Nightscout API: find[created_at][$lt]=ISO timestamp filters treatments before the given date
-    const beforeDate = new Date(beforeTimestamp).toISOString();
-    const endpoint = `${API_BASE}/treatments.json?find[created_at][$lt]=${beforeDate}&count=${count}`;
-    const res = await fetch(buildUrl(endpoint), { headers });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch older treatments: ${res.status} ${res.statusText}`);
-    }
-
-    const rawTreatments: any[] = await res.json();
-    const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
-    return treatments;
-  } catch (error) {
-    console.error('Failed to fetch older treatments:', error);
-    throw error;
-  }
-}
-
-/**
- * Fetch newer treatments after a given timestamp
- * Used to load new data when scrolling forward
- */
-export async function fetchNewerTreatments(afterTimestamp: number, count: number = 200): Promise<Treatment[]> {
-  try {
-    const headers = await getHeaders();
-    // Nightscout API: find[created_at][$gt]=ISO timestamp filters treatments after the given date
-    const afterDate = new Date(afterTimestamp).toISOString();
-    const endpoint = `${API_BASE}/treatments.json?find[created_at][$gt]=${afterDate}&count=${count}`;
-    const res = await fetch(buildUrl(endpoint), { headers });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch newer treatments: ${res.status} ${res.statusText}`);
-    }
-
-    const rawTreatments: any[] = await res.json();
-    const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
-    return treatments;
-  } catch (error) {
-    console.error('Failed to fetch newer treatments:', error);
-    throw error;
-  }
-}
+// REMOVED: Treatment lazy loading does not work reliably with Nightscout API
+// The API only supports filtering by created_at, not by when treatments were applied
+// Solution: Load ALL treatments at initial load (count=10000 in fetchNightscoutData)
 
 /**
  * Fetch server status
