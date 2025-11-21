@@ -31,6 +31,8 @@ interface BgState {
   updateFromSocket: (entry: BgEntry) => void;
   prependOlderEntries: (olderEntries: BgEntry[]) => void;
   appendNewerEntries: (newerEntries: BgEntry[]) => void;
+  prependOlderTreatments: (olderTreatments: Treatment[]) => void;
+  appendNewerTreatments: (newerTreatments: Treatment[]) => void;
 
   // Viewport actions
   initViewport: (center: number, rangeMs: number) => void;
@@ -224,6 +226,34 @@ export const useBgStore = create<BgState>((set, get) => ({
     }
 
     set(updates);
+  },
+
+  prependOlderTreatments: (olderTreatments) => {
+    const { treatments } = get();
+
+    // Filter out duplicates and merge older treatments at the end
+    const existingIds = new Set(treatments.map(t => t._id));
+    const uniqueOlderTreatments = olderTreatments.filter(t => !existingIds.has(t._id));
+
+    // Append older treatments to the end (treatments sorted by date descending)
+    const mergedTreatments = [...treatments, ...uniqueOlderTreatments];
+
+    set({ treatments: mergedTreatments });
+    console.log(`Prepended ${uniqueOlderTreatments.length} older treatments (total: ${mergedTreatments.length})`);
+  },
+
+  appendNewerTreatments: (newerTreatments) => {
+    const { treatments } = get();
+
+    // Filter out duplicates and merge newer treatments at the beginning
+    const existingIds = new Set(treatments.map(t => t._id));
+    const uniqueNewerTreatments = newerTreatments.filter(t => !existingIds.has(t._id));
+
+    // Prepend newer treatments to the beginning (treatments sorted by date descending)
+    const mergedTreatments = [...uniqueNewerTreatments, ...treatments];
+
+    set({ treatments: mergedTreatments });
+    console.log(`Appended ${uniqueNewerTreatments.length} newer treatments (total: ${mergedTreatments.length})`);
   },
 
   // Initialize viewport with center and range

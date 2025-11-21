@@ -169,6 +169,56 @@ export async function fetchNewerEntries(afterTimestamp: number, count: number = 
 }
 
 /**
+ * Fetch older treatments before a given timestamp
+ * Used for infinite scroll backwards in time
+ */
+export async function fetchOlderTreatments(beforeTimestamp: number, count: number = 200): Promise<Treatment[]> {
+  try {
+    const headers = await getHeaders();
+    // Nightscout API: find[created_at][$lt]=ISO timestamp filters treatments before the given date
+    const beforeDate = new Date(beforeTimestamp).toISOString();
+    const endpoint = `${API_BASE}/treatments.json?find[created_at][$lt]=${beforeDate}&count=${count}`;
+    const res = await fetch(buildUrl(endpoint), { headers });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch older treatments: ${res.status} ${res.statusText}`);
+    }
+
+    const rawTreatments: any[] = await res.json();
+    const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
+    return treatments;
+  } catch (error) {
+    console.error('Failed to fetch older treatments:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch newer treatments after a given timestamp
+ * Used to load new data when scrolling forward
+ */
+export async function fetchNewerTreatments(afterTimestamp: number, count: number = 200): Promise<Treatment[]> {
+  try {
+    const headers = await getHeaders();
+    // Nightscout API: find[created_at][$gt]=ISO timestamp filters treatments after the given date
+    const afterDate = new Date(afterTimestamp).toISOString();
+    const endpoint = `${API_BASE}/treatments.json?find[created_at][$gt]=${afterDate}&count=${count}`;
+    const res = await fetch(buildUrl(endpoint), { headers });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch newer treatments: ${res.status} ${res.statusText}`);
+    }
+
+    const rawTreatments: any[] = await res.json();
+    const treatments: Treatment[] = rawTreatments.map(normalizeTreatment);
+    return treatments;
+  } catch (error) {
+    console.error('Failed to fetch newer treatments:', error);
+    throw error;
+  }
+}
+
+/**
  * Fetch server status
  */
 export async function fetchServerStatus() {
