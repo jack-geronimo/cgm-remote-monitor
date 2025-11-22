@@ -112,8 +112,6 @@ export async function fetchNightscoutData(): Promise<NightscoutData> {
     console.log('🏥 Initial data load:', {
       entries: entries.length,
       treatments: treatments.length,
-      oldestTreatment: treatments.length > 0 ? new Date(treatments[treatments.length - 1].mills).toLocaleString() : 'none',
-      newestTreatment: treatments.length > 0 ? new Date(treatments[0].mills).toLocaleString() : 'none',
     });
 
     return {

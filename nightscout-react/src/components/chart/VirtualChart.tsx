@@ -140,21 +140,24 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
     // Collect all unique timestamps from BG entries and treatments
     const timestampMap = new Map<number, {
       bg?: number;
+      isRealBg?: boolean;  // Flag to distinguish real BG entries from treatment Y-positions
       insulin?: { amount: number; treatment: Treatment };
       carbs?: { amount: number; treatment: Treatment };
     }>();
 
-    // Add BG entries
+    // Add BG entries - these are REAL BG data points
     visibleEntries.forEach(entry => {
       const timestamp = entry.mills || entry.date;
       if (timestamp && isFinite(entry.sgv)) {
         timestampMap.set(timestamp / 1000, {
           bg: entry.sgv,
+          isRealBg: true,  // Mark as real BG entry
         });
       }
     });
 
-    // Add treatments
+    // Add treatments at their REAL timestamps
+    // They get a bg value only for Y-position (where to draw the marker), NOT as a data point
     visibleTreatments.forEach(treatment => {
       const timestamp = treatment.mills / 1000;
       const bgValue = findClosestBgValue(treatment.mills, visibleEntries);
@@ -163,19 +166,19 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       if (treatment.insulin && treatment.insulin > 0) {
         existing.insulin = { amount: treatment.insulin, treatment };
-        // Store in treatment map for tooltip lookup
         treatmentMapRef.current.set(timestamp, treatment);
       }
 
       if (treatment.carbs && treatment.carbs > 0) {
         existing.carbs = { amount: treatment.carbs, treatment };
-        // Store in treatment map for tooltip lookup
         treatmentMapRef.current.set(timestamp, treatment);
       }
 
-      // Store BG value at treatment time if not already there
-      if (!existing.bg) {
-        existing.bg = bgValue;
+      // Set bg value for Y-position of treatment markers, but NOT as a real BG point
+      // isRealBg stays undefined/false - this prevents ghost BG points from being rendered
+      if (!existing.isRealBg) {
+        existing.bg = bgValue;  // Only for Y-position, not rendered as BG dot
+        // existing.isRealBg stays undefined = not a real BG point
       }
 
       timestampMap.set(timestamp, existing);
@@ -194,7 +197,8 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       const data = timestampMap.get(ts)!;
 
       timestamps.push(ts);
-      bgValues.push(data.bg || null);
+      // Only push REAL BG values - not ghost BG values from treatments
+      bgValues.push(data.isRealBg ? (data.bg ?? null) : null);
       insulinValues.push(data.insulin ? data.bg! : null);
       carbsValues.push(data.carbs ? data.bg! : null);
     });
