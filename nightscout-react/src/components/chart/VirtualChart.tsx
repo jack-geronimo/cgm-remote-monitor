@@ -844,10 +844,21 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
       // Find nearest data point by PIXEL distance
       // This is more reliable than time-based distance because it directly measures
       // what the user sees on screen
+      // IMPORTANT: Only consider points that have data in at least one VISIBLE series
       let closestIdx = -1;
       let minPixelDist = Infinity;
 
       for (let i = 0; i < data[0].length; i++) {
+        // Check if this point has data in any visible series
+        const hasBg = seriesVisible.bg && data[1] && data[1][i] != null;
+        const hasInsulin = seriesVisible.insulin && data[2] && data[2][i] != null;
+        const hasCarbs = seriesVisible.carbs && data[3] && data[3][i] != null;
+
+        // Skip points that have no data in any visible series
+        if (!hasBg && !hasInsulin && !hasCarbs) {
+          continue;
+        }
+
         const pointX = chart.valToPos(data[0][i], 'x');
         const pixelDist = Math.abs(pointX - mouseX);
 
@@ -862,21 +873,36 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         return;
       }
 
-      // Calculate dynamic threshold based on average spacing between data points
-      // This ensures tooltip works at all zoom levels
+      // Calculate dynamic threshold based on average spacing between VISIBLE data points
+      // This ensures tooltip works at all zoom levels and with sparse data (like carbs)
       let avgSpacing = 50; // Default fallback
-      if (data[0].length > 1) {
-        // Sample first few visible points to estimate spacing
-        const sampleSize = Math.min(10, data[0].length - 1);
+
+      // Collect indices of points with data in visible series
+      const visibleIndices: number[] = [];
+      for (let i = 0; i < data[0].length; i++) {
+        const hasBg = seriesVisible.bg && data[1] && data[1][i] != null;
+        const hasInsulin = seriesVisible.insulin && data[2] && data[2][i] != null;
+        const hasCarbs = seriesVisible.carbs && data[3] && data[3][i] != null;
+
+        if (hasBg || hasInsulin || hasCarbs) {
+          visibleIndices.push(i);
+        }
+      }
+
+      if (visibleIndices.length > 1) {
+        // Calculate spacing between consecutive visible points
+        const sampleSize = Math.min(10, visibleIndices.length - 1);
         let totalSpacing = 0;
         let count = 0;
 
         for (let i = 0; i < sampleSize; i++) {
-          const x1 = chart.valToPos(data[0][i], 'x');
-          const x2 = chart.valToPos(data[0][i + 1], 'x');
+          const idx1 = visibleIndices[i];
+          const idx2 = visibleIndices[i + 1];
+          const x1 = chart.valToPos(data[0][idx1], 'x');
+          const x2 = chart.valToPos(data[0][idx2], 'x');
           const spacing = Math.abs(x2 - x1);
 
-          // Only count visible points
+          // Only count points within viewport
           if (x1 >= bbox.left && x1 <= bbox.left + bbox.width) {
             totalSpacing += spacing;
             count++;
@@ -908,8 +934,9 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
 
       // Determine which series has a value at this index
       // Priority: Insulin > Carbs > BG (so treatments are preferred when hovering)
+      // Only show tooltip for VISIBLE series
       let seriesIdx = 1; // Default to BG
-      let value = data[1][closestIdx]; // BG value
+      let value: number | null = null; // Will be set if a visible series has data
       let treatment: Treatment | undefined;
 
       // Check insulin series (series 2)
@@ -924,11 +951,12 @@ export const VirtualChart = memo(function VirtualChart({ defaultRange = '12h' }:
         value = data[3][closestIdx];
         treatment = treatmentMapRef.current.get(exactTimestamp);
       }
-      // Otherwise use BG series (series 1)
+      // Otherwise use BG series (series 1) - only if visible
       else if (data[1] && data[1][closestIdx] != null && seriesVisible.bg) {
         seriesIdx = 1;
         value = data[1][closestIdx];
       }
+      // If no visible series has data at this point, value remains null
 
       if (value != null && isFinite(value)) {
         // Calculate data point pixel positions (canvas coordinates)
